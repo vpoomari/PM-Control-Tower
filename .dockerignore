@@ -1,0 +1,25 @@
+# PM CONTROL TOWER — Docker build context exclusions
+node_modules
+**/node_modules
+.next
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+dev.log
+server.log
+db
+*.db
+*.db-journal
+download
+tool-results
+.zscripts
+agent-ctx
+deploy-staging
+package-pmct
+docs
+tests
+examples
+*.md
+!README.md

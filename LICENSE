@@ -1,0 +1,35 @@
+PM CONTROL TOWER — Software License
+
+Copyright (c) 2026. All rights reserved.
+
+1. GRANT
+   This software and its accompanying documentation ("the Software") are
+   licensed to the deploying organization for internal business use,
+   including production deployment on organization-controlled or
+   organization-authorized infrastructure.
+
+2. PERMITTED USE
+   - Install, run and operate the Software for internal project, program
+     and portfolio management purposes.
+   - Modify configuration, reference data, documentation and source code
+     for internal operational needs.
+
+3. RESTRICTIONS
+   - Resale, sublicensing, or redistribution of the Software, in whole or
+     in part, is not permitted without the copyright holder's written
+     consent.
+   - Removal of product attribution ("PM CONTROL TOWER") from the user
+     interface or documentation is not permitted.
+
+4. WARRANTY
+   The Software is provided "as is", without warranty of any kind, express
+   or implied, including but not limited to the warranties of
+   merchantability, fitness for a particular purpose and
+   non-infringement. In no event shall the authors or copyright holders be
+   liable for any claim, damages or other liability arising from, out of
+   or in connection with the Software or its use.
+
+5. THIRD-PARTY COMPONENTS
+   The Software depends on open-source packages distributed under their
+   own licenses (see package.json / package-lock.json). Those components
+   remain governed by their respective licenses.

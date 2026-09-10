@@ -1,0 +1,562 @@
+     1→"use client";
+     2→// PM CONTROL TOWER — RAID console: risks, issues, assumptions and dependencies per project.
+     3→
+     4→import { useEffect, useMemo, useState } from "react";
+     5→import { toast } from "sonner";
+     6→import { api, useApi, useRealtimeRefetch } from "@/lib/client";
+     7→import { fmtDate } from "@/lib/constants";
+     8→import {
+     9→  PageHeader, SectionCard, StatusChip, LoadingBlock, ErrorBlock, EmptyState, DataTable, Column,
+    10→  ConfirmButton, Button, Input,
+    11→} from "@/components/pmct/kit";
+    12→import { Textarea } from "@/components/ui/textarea";
+    13→import {
+    14→  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+    15→} from "@/components/ui/dialog";
+    16→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+    17→import { Label } from "@/components/ui/label";
+    18→import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    19→import { ProjectPicker, useControlProjectOptions } from "@/views/control/shared/pickers";
+    20→import { Plus, Pencil, Trash2, ArrowRight } from "lucide-react";
+    21→
+    22→const RISK_CATEGORIES = ["TECHNICAL", "COMMERCIAL", "FINANCIAL", "OPERATIONAL", "REGULATORY", "RESOURCE", "EXTERNAL", "OTHER"] as const;
+    23→const RISK_STATUSES = ["OPEN", "MITIGATING", "ACCEPTED", "ESCALATED", "CLOSED"] as const;
+    24→const STRATEGIES = ["MITIGATE", "AVOID", "TRANSFER", "ACCEPT", "MONITOR", "ESCALATE"] as const;
+    25→const ISSUE_CATEGORIES = ["TECHNICAL", "COMMERCIAL", "FINANCIAL", "OPERATIONAL", "REGULATORY", "RESOURCE", "QUALITY", "VENDOR", "OTHER"] as const;
+    26→const ISSUE_STATUSES = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"] as const;
+    27→const ISSUE_SEVERITY = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
+    28→const ASSUMPTION_STATUSES = ["VALID", "AT_RISK", "INVALID", "CLOSED"] as const;
+    29→
+    30→interface Risk {
+    31→  [key: string]: unknown;
+    32→  id: string; projectId: string; code: string; title: string; description: string | null;
+    33→  category: string; probability: number; impact: number; score: number; severity: string;
+    34→  status: string; ownerName: string | null; responseStrategy: string; mitigation: string | null;
+    35→  escalationLevel: string; dueDate: string | null; closedAt: string | null;
+    36→  project: { id: string; code: string; name: string };
+    37→}
+    38→interface Issue {
+    39→  [key: string]: unknown;
+    40→  id: string; projectId: string; code: string; title: string; description: string | null;
+    41→  category: string; priority: string; severity: string; status: string; ownerName: string | null;
+    42→  raisedBy: string | null; impact: string | null; resolution: string | null; escalationLevel: string;
+    43→  raisedAt: string | null; dueDate: string | null; resolvedAt: string | null;
+    44→  project: { id: string; code: string; name: string };
+    45→}
+    46→interface Assumption {
+    47→  [key: string]: unknown;
+    48→  id: string; projectId: string; code: string; description: string; rationale: string | null;
+    49→  impactIfFalse: string | null; status: string; ownerName: string | null;
+    50→  validationDate: string | null; dueDate: string | null;
+    51→  project: { id: string; code: string; name: string };
+    52→}
+    53→interface Dependency {
+    54→  id: string; depType: string; lagDays: number; isExternal: boolean;
+    55→  predecessor: { id: string; code: string; name: string; status: string };
+    56→  successor: { id: string; code: string; name: string; status: string };
+    57→}
+    58→
+    59→const emptyRisk = { title: "", description: "", category: "TECHNICAL", probability: "3", impact: "3", ownerName: "", responseStrategy: "MITIGATE", mitigation: "", dueDate: "" };
+    60→const emptyIssue = { title: "", description: "", category: "TECHNICAL", severity: "MEDIUM", ownerName: "", raisedBy: "", impact: "", dueDate: "", escalationLevel: "NONE", resolution: "" };
+    61→const emptyAssumption = { description: "", rationale: "", impactIfFalse: "", ownerName: "", dueDate: "" };
+    62→
+    63→export default function RaidView() {
+    64→  const { options, loading: optionsLoading } = useControlProjectOptions();
+    65→  const [projectId, setProjectId] = useState("");
+    66→  useEffect(() => {
+    67→    if (!projectId && options.length) setProjectId(options[0].id);
+    68→  }, [options, projectId]);
+    69→
+    70→  const [tab, setTab] = useState<"risks" | "issues" | "assumptions" | "dependencies">("risks");
+    71→  const refreshRaid = async () => {
+    72→    await Promise.all([risks.refetch(), issues.refetch(), assumptions.refetch()]);
+    73→  };
+    74→
+    75→  const risks = useApi<{ risks: Risk[] }>(projectId ? `/api/risks?projectId=${projectId}` : null);
+    76→  const issues = useApi<{ issues: Issue[] }>(projectId ? `/api/issues?projectId=${projectId}` : null);
+    77→  const assumptions = useApi<{ assumptions: Assumption[] }>(projectId ? `/api/assumptions?projectId=${projectId}` : null);
+    78→  const dependencies = useApi<{ items: Dependency[] }>(projectId && tab === "dependencies" ? `/api/projects/${projectId}/dependencies` : null);
+    79→  useRealtimeRefetch(() => { void refreshRaid(); }, ["raid:changed"]);
+    80→
+    81→  const selected = options.find((o) => o.id === projectId);
+    82→
+    83→  // ---- patch helpers ----
+    84→  const patch = async (fn: () => Promise<unknown>, okMsg: string) => {
+    85→    try {
+    86→      await fn();
+    87→      toast.success(okMsg);
+    88→      await refreshRaid();
+    89→    } catch (e) {
+    90→      toast.error(e instanceof Error ? e.message : "Update failed");
+    91→    }
+    92→  };
+    93→
+    94→  // ---- Risk dialogs ----
+    95→  const [riskDialog, setRiskDialog] = useState<{ mode: "add" | "edit"; target?: Risk } | null>(null);
+    96→  const [riskForm, setRiskForm] = useState(emptyRisk);
+    97→  const [savingRisk, setSavingRisk] = useState(false);
+    98→
+    99→  const openRiskDialog = (mode: "add" | "edit", target?: Risk) => {
+   100→    setRiskForm(target ? {
+   101→      title: target.title, description: target.description ?? "", category: target.category,
+   102→      probability: String(target.probability), impact: String(target.impact), ownerName: target.ownerName ?? "",
+   103→      responseStrategy: target.responseStrategy, mitigation: target.mitigation ?? "", dueDate: target.dueDate?.slice(0, 10) ?? "",
+   104→    } : emptyRisk);
+   105→    setRiskDialog({ mode, target });
+   106→  };
+   107→
+   108→  const saveRisk = async () => {
+   109→    if (riskForm.title.trim().length < 3) { toast.error("Risk title is required (min 3 chars)"); return; }
+   110→    setSavingRisk(true);
+   111→    const body = {
+   112→      projectId,
+   113→      title: riskForm.title.trim(),
+   114→      description: riskForm.description || null,
+   115→      category: riskForm.category,
+   116→      probability: Number(riskForm.probability) || 3,
+   117→      impact: Number(riskForm.impact) || 3,
+   118→      ownerName: riskForm.ownerName || null,
+   119→      responseStrategy: riskForm.responseStrategy,
+   120→      mitigation: riskForm.mitigation || null,
+   121→      dueDate: riskForm.dueDate || null,
+   122→    };
+   123→    try {
+   124→      if (riskDialog?.mode === "edit" && riskDialog.target) await api.patch(`/api/risks/${riskDialog.target.id}`, body);
+   125→      else await api.post("/api/risks", body);
+   126→      toast.success(riskDialog?.mode === "edit" ? "Risk updated" : "Risk registered");
+   127→      setRiskDialog(null);
+   128→      await refreshRaid();
+   129→    } catch (e) {
+   130→      toast.error(e instanceof Error ? e.message : "Could not save risk");
+   131→    } finally {
+   132→      setSavingRisk(false);
+   133→    }
+   134→  };
+   135→
+   136→  // ---- Issue dialogs ----
+   137→  const [issueDialog, setIssueDialog] = useState<{ mode: "add" | "edit"; target?: Issue } | null>(null);
+   138→  const [issueForm, setIssueForm] = useState(emptyIssue);
+   139→  const [savingIssue, setSavingIssue] = useState(false);
+   140→
+   141→  const openIssueDialog = (mode: "add" | "edit", target?: Issue) => {
+   142→    setIssueForm(target ? {
+   143→      title: target.title, description: target.description ?? "", category: target.category,
+   144→      severity: target.severity, ownerName: target.ownerName ?? "", raisedBy: target.raisedBy ?? "",
+   145→      impact: target.impact ?? "", dueDate: target.dueDate?.slice(0, 10) ?? "", escalationLevel: target.escalationLevel,
+   146→      resolution: target.resolution ?? "",
+   147→    } : emptyIssue);
+   148→    setIssueDialog({ mode, target });
+   149→  };
+   150→
+   151→  const saveIssue = async () => {
+   152→    if (issueForm.title.trim().length < 3) { toast.error("Issue title is required (min 3 chars)"); return; }
+   153→    setSavingIssue(true);
+   154→    const body = {
+   155→      projectId,
+   156→      title: issueForm.title.trim(),
+   157→      description: issueForm.description || null,
+   158→      category: issueForm.category,
+   159→      severity: issueForm.severity,
+   160→      ownerName: issueForm.ownerName || null,
+   161→      raisedBy: issueForm.raisedBy || null,
+   162→      impact: issueForm.impact || null,
+   163→      dueDate: issueForm.dueDate || null,
+   164→      escalationLevel: issueForm.escalationLevel,
+   165→    };
+   166→    try {
+   167→      if (issueDialog?.mode === "edit" && issueDialog.target) {
+   168→        await api.patch(`/api/issues/${issueDialog.target.id}`, { ...body, resolution: issueForm.resolution || null });
+   169→      } else {
+   170→        await api.post("/api/issues", body);
+   171→      }
+   172→      toast.success(issueDialog?.mode === "edit" ? "Issue updated" : "Issue logged");
+   173→      setIssueDialog(null);
+   174→      await refreshRaid();
+   175→    } catch (e) {
+   176→      toast.error(e instanceof Error ? e.message : "Could not save issue");
+   177→    } finally {
+   178→      setSavingIssue(false);
+   179→    }
+   180→  };
+   181→
+   182→  // ---- Assumption dialogs ----
+   183→  const [asmDialog, setAsmDialog] = useState<{ mode: "add" | "edit"; target?: Assumption } | null>(null);
+   184→  const [asmForm, setAsmForm] = useState(emptyAssumption);
+   185→  const [savingAsm, setSavingAsm] = useState(false);
+   186→
+   187→  const openAsmDialog = (mode: "add" | "edit", target?: Assumption) => {
+   188→    setAsmForm(target ? {
+   189→      description: target.description, rationale: target.rationale ?? "",
+   190→      impactIfFalse: target.impactIfFalse ?? "", ownerName: target.ownerName ?? "", dueDate: target.dueDate?.slice(0, 10) ?? "",
+   191→    } : emptyAssumption);
+   192→    setAsmDialog({ mode, target });
+   193→  };
+   194→
+   195→  const saveAsm = async () => {
+   196→    if (asmForm.description.trim().length < 3) { toast.error("Describe the assumption (min 3 chars)"); return; }
+   197→    setSavingAsm(true);
+   198→    const body = {
+   199→      projectId,
+   200→      description: asmForm.description.trim(),
+   201→      rationale: asmForm.rationale || null,
+   202→      impactIfFalse: asmForm.impactIfFalse || null,
+   203→      ownerName: asmForm.ownerName || null,
+   204→      dueDate: asmForm.dueDate || null,
+   205→    };
+   206→    try {
+   207→      if (asmDialog?.mode === "edit" && asmDialog.target) await api.patch(`/api/assumptions/${asmDialog.target.id}`, body);
+   208→      else await api.post("/api/assumptions", body);
+   209→      toast.success(asmDialog?.mode === "edit" ? "Assumption updated" : "Assumption recorded");
+   210→      setAsmDialog(null);
+   211→      await refreshRaid();
+   212→    } catch (e) {
+   213→      toast.error(e instanceof Error ? e.message : "Could not save assumption");
+   214→    } finally {
+   215→      setSavingAsm(false);
+   216→    }
+   217→  };
+   218→
+   219→  const summary = useMemo(() => {
+   220→    const r = risks.data?.risks ?? [];
+   221→    const i = issues.data?.issues ?? [];
+   222→    const a = assumptions.data?.assumptions ?? [];
+   223→    return {
+   224→      openRisks: r.filter((x) => x.status !== "CLOSED").length,
+   225→      critical: r.filter((x) => x.severity === "CRITICAL" && x.status !== "CLOSED").length,
+   226→      openIssues: i.filter((x) => !["RESOLVED", "CLOSED"].includes(x.status)).length,
+   227→      atRisk: a.filter((x) => x.status === "AT_RISK").length,
+   228→    };
+   229→  }, [risks.data, issues.data, assumptions.data]);
+   230→
+   231→  // ---- Columns ----
+   232→  const riskColumns: Column<Risk>[] = [
+   233→    { key: "code", header: "Code", render: (r) => <span className="font-mono text-xs text-slate-500">{r.code}</span> },
+   234→    { key: "title", header: "Risk", className: "min-w-56 max-w-72", render: (r) => (
+   235→      <div><p className="font-medium text-slate-800 truncate">{r.title}</p><p className="text-xs text-slate-400">{r.category.toLowerCase()}</p></div>
+   236→    ) },
+   237→    { key: "score", header: "P × I", render: (r) => (
+   238→      <span className="tabular-nums text-slate-600">{r.probability}×{r.impact}=<span className={`font-semibold ${r.score >= 16 ? "text-red-600" : r.score >= 10 ? "text-amber-600" : "text-slate-700"}`}>{r.score}</span></span>
+   239→    ) },
+   240→    { key: "severity", header: "Severity", render: (r) => <StatusChip status={r.severity} /> },
+   241→    { key: "status", header: "Status", render: (r) => (
+   242→      <Select value={r.status} onValueChange={(v) => void patch(() => api.patch(`/api/risks/${r.id}`, { status: v }), `${r.code} → ${v.toLowerCase()}`)}>
+   243→        <SelectTrigger className="h-7 w-32 text-xs bg-white" aria-label={`Status for ${r.code}`}><SelectValue /></SelectTrigger>
+   244→        <SelectContent>{RISK_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+   245→      </Select>
+   246→    ) },
+   247→    { key: "owner", header: "Owner", render: (r) => <span className="text-slate-600">{r.ownerName || "—"}</span> },
+   248→    { key: "strategy", header: "Strategy", render: (r) => <span className="text-xs text-slate-500">{r.responseStrategy.toLowerCase()}</span> },
+   249→    { key: "due", header: "Due", render: (r) => <span className="tabular-nums text-slate-500">{fmtDate(r.dueDate)}</span> },
+   250→    { key: "escalation", header: "Escalation", render: (r) => <span className="text-xs text-slate-400">{r.escalationLevel.toLowerCase()}</span> },
+   251→    { key: "actions", header: "", className: "w-20", render: (r) => (
+   252→      <div className="flex items-center gap-1">
+   253→        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit ${r.code}`} onClick={(e) => { e.stopPropagation(); openRiskDialog("edit", r); }}><Pencil className="h-3.5 w-3.5" /></Button>
+   254→        <ConfirmButton onConfirm={() => void patch(() => api.del(`/api/risks/${r.id}`), `${r.code} deleted`)} title={`Delete ${r.code}?`} description="The risk record will be permanently removed." variant="ghost">
+   255→          <span className="inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:text-red-500" aria-label={`Delete ${r.code}`} onClick={(e) => e.stopPropagation()}><Trash2 className="h-3.5 w-3.5" /></span>
+   256→        </ConfirmButton>
+   257→      </div>
+   258→    ) },
+   259→  ];
+   260→
+   261→  const issueColumns: Column<Issue>[] = [
+   262→    { key: "code", header: "Code", render: (i) => <span className="font-mono text-xs text-slate-500">{i.code}</span> },
+   263→    { key: "title", header: "Issue", className: "min-w-56 max-w-72", render: (i) => (
+   264→      <div><p className="font-medium text-slate-800 truncate">{i.title}</p><p className="text-xs text-slate-400">{i.category.toLowerCase()}{i.impact ? ` · ${i.impact}` : ""}</p></div>
+   265→    ) },
+   266→    { key: "severity", header: "Severity", render: (i) => <StatusChip status={i.severity} /> },
+   267→    { key: "priority", header: "Priority", render: (i) => <StatusChip status={i.priority} /> },
+   268→    { key: "status", header: "Status", render: (i) => (
+   269→      <Select value={i.status} onValueChange={(v) => void patch(() => api.patch(`/api/issues/${i.id}`, { status: v }), `${i.code} → ${v.toLowerCase()}`)}>
+   270→        <SelectTrigger className="h-7 w-32 text-xs bg-white" aria-label={`Status for ${i.code}`}><SelectValue /></SelectTrigger>
+   271→        <SelectContent>{ISSUE_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+   272→      </Select>
+   273→    ) },
+   274→    { key: "owner", header: "Owner", render: (i) => <span className="text-slate-600">{i.ownerName || "—"}</span> },
+   275→    { key: "due", header: "Due", render: (i) => <span className="tabular-nums text-slate-500">{fmtDate(i.dueDate)}</span> },
+   276→    { key: "resolution", header: "Resolution", className: "max-w-40", render: (i) => <span className="text-xs text-slate-500 truncate block">{i.resolution || "—"}</span> },
+   277→    { key: "actions", header: "", className: "w-20", render: (i) => (
+   278→      <div className="flex items-center gap-1">
+   279→        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit ${i.code}`} onClick={(e) => { e.stopPropagation(); openIssueDialog("edit", i); }}><Pencil className="h-3.5 w-3.5" /></Button>
+   280→        <ConfirmButton onConfirm={() => void patch(() => api.del(`/api/issues/${i.id}`), `${i.code} deleted`)} title={`Delete ${i.code}?`} description="The issue record will be permanently removed." variant="ghost">
+   281→          <span className="inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:text-red-500" aria-label={`Delete ${i.code}`} onClick={(e) => e.stopPropagation()}><Trash2 className="h-3.5 w-3.5" /></span>
+   282→        </ConfirmButton>
+   283→      </div>
+   284→    ) },
+   285→  ];
+   286→
+   287→  const asmColumns: Column<Assumption>[] = [
+   288→    { key: "code", header: "Code", render: (a) => <span className="font-mono text-xs text-slate-500">{a.code}</span> },
+   289→    { key: "description", header: "Assumption", className: "min-w-72 max-w-md", render: (a) => <p className="text-slate-800">{a.description}</p> },
+   290→    { key: "status", header: "Status", render: (a) => (
+   291→      <Select value={a.status} onValueChange={(v) => void patch(() => api.patch(`/api/assumptions/${a.id}`, { status: v }), `${a.code} → ${v.toLowerCase()}${v === "VALID" ? " (validated)" : ""}`)}>
+   292→        <SelectTrigger className="h-7 w-32 text-xs bg-white" aria-label={`Status for ${a.code}`}><SelectValue /></SelectTrigger>
+   293→        <SelectContent>{ASSUMPTION_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+   294→      </Select>
+   295→    ) },
+   296→    { key: "owner", header: "Owner", render: (a) => <span className="text-slate-600">{a.ownerName || "—"}</span> },
+   297→    { key: "validationDate", header: "Validated", render: (a) => <span className="tabular-nums text-slate-500">{fmtDate(a.validationDate)}</span> },
+   298→    { key: "due", header: "Review by", render: (a) => <span className="tabular-nums text-slate-500">{fmtDate(a.dueDate)}</span> },
+   299→    { key: "actions", header: "", className: "w-20", render: (a) => (
+   300→      <div className="flex items-center gap-1">
+   301→        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit ${a.code}`} onClick={(e) => { e.stopPropagation(); openAsmDialog("edit", a); }}><Pencil className="h-3.5 w-3.5" /></Button>
+   302→        <ConfirmButton onConfirm={() => void patch(() => api.del(`/api/assumptions/${a.id}`), `${a.code} deleted`)} title={`Delete ${a.code}?`} description="The assumption will be permanently removed." variant="ghost">
+   303→          <span className="inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:text-red-500" aria-label={`Delete ${a.code}`} onClick={(e) => e.stopPropagation()}><Trash2 className="h-3.5 w-3.5" /></span>
+   304→        </ConfirmButton>
+   305→      </div>
+   306→    ) },
+   307→  ];
+   308→
+   309→  if (optionsLoading) return <LoadingBlock label="Loading projects…" />;
+   310→  if (!projectId) return <EmptyState title="No projects available" />;
+   311→  const loadingAny = (risks.loading && !risks.data) || (issues.loading && !issues.data) || (assumptions.loading && !assumptions.data);
+   312→  const firstError = risks.error || issues.error || assumptions.error;
+   313→
+   314→  return (
+   315→    <div className="space-y-5">
+   316→      <PageHeader
+   317→        title="RAID Console"
+   318→        subtitle="Risks, assumptions, issues and dependencies — one governed log per project."
+   319→        breadcrumb={["Home", "Control", "RAID"]}
+   320→        actions={<ProjectPicker value={projectId} onChange={setProjectId} options={options} />}
+   321→      />
+   322→
+   323→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+   324→        <SectionCard bodyClass="p-4"><p className="text-xs uppercase text-slate-400">Open risks</p><p className="text-2xl font-semibold text-slate-900 tabular-nums">{summary.openRisks}</p></SectionCard>
+   325→        <SectionCard bodyClass="p-4"><p className="text-xs uppercase text-slate-400">Critical severity</p><p className="text-2xl font-semibold text-red-600 tabular-nums">{summary.critical}</p></SectionCard>
+   326→        <SectionCard bodyClass="p-4"><p className="text-xs uppercase text-slate-400">Open issues</p><p className="text-2xl font-semibold text-amber-600 tabular-nums">{summary.openIssues}</p></SectionCard>
+   327→        <SectionCard bodyClass="p-4"><p className="text-xs uppercase text-slate-400">Assumptions at risk</p><p className="text-2xl font-semibold text-slate-900 tabular-nums">{summary.atRisk}</p></SectionCard>
+   328→      </div>
+   329→
+   330→      <SectionCard
+   331→        title={selected ? `${selected.code} — ${selected.name}` : "RAID log"}
+   332→        actions={
+   333→          <div className="flex items-center gap-2">
+   334→            <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+   335→              <TabsList className="h-9">
+   336→                <TabsTrigger value="risks" className="text-xs">Risks</TabsTrigger>
+   337→                <TabsTrigger value="issues" className="text-xs">Issues</TabsTrigger>
+   338→                <TabsTrigger value="assumptions" className="text-xs">Assumptions</TabsTrigger>
+   339→                <TabsTrigger value="dependencies" className="text-xs">Dependencies</TabsTrigger>
+   340→              </TabsList>
+   341→            </Tabs>
+   342→            {tab === "risks" && <Button size="sm" onClick={() => openRiskDialog("add")}><Plus className="h-4 w-4 mr-1" />Add risk</Button>}
+   343→            {tab === "issues" && <Button size="sm" onClick={() => openIssueDialog("add")}><Plus className="h-4 w-4 mr-1" />Log issue</Button>}
+   344→            {tab === "assumptions" && <Button size="sm" onClick={() => openAsmDialog("add")}><Plus className="h-4 w-4 mr-1" />Add assumption</Button>}
+   345→          </div>
+   346→        }
+   347→      >
+   348→        {loadingAny && !(risks.data || issues.data || assumptions.data) ? <LoadingBlock label="Loading RAID log…" /> :
+   349→          firstError && !(risks.data || issues.data || assumptions.data) ? <ErrorBlock message={firstError} onRetry={() => void refreshRaid()} /> : (
+   350→            <>
+   351→              {tab === "risks" && (risks.error ? <ErrorBlock message={risks.error} onRetry={risks.refetch} /> :
+   352→                <DataTable columns={riskColumns} rows={risks.data?.risks ?? []} keyField="id" emptyTitle="No risks registered" emptyDescription="A clean log is good news — register new risks as they emerge." maxHeight="36rem" />)}
+   353→              {tab === "issues" && (issues.error ? <ErrorBlock message={issues.error} onRetry={issues.refetch} /> :
+   354→                <DataTable columns={issueColumns} rows={issues.data?.issues ?? []} keyField="id" emptyTitle="No issues logged" emptyDescription="Issues raised through monitoring will appear here." maxHeight="36rem" />)}
+   355→              {tab === "assumptions" && (assumptions.error ? <ErrorBlock message={assumptions.error} onRetry={assumptions.refetch} /> :
+   356→                <DataTable columns={asmColumns} rows={assumptions.data?.assumptions ?? []} keyField="id" emptyTitle="No assumptions recorded" maxHeight="36rem" />)}
+   357→              {tab === "dependencies" && (dependencies.loading && !dependencies.data ? <LoadingBlock /> :
+   358→                dependencies.error ? <ErrorBlock message={dependencies.error} onRetry={dependencies.refetch} /> :
+   359→                  (dependencies.data?.items ?? []).length === 0 ? <EmptyState title="No dependencies mapped" /> : (
+   360→                    <div className="rounded-lg border border-slate-200 overflow-auto max-h-96">
+   361→                      <table className="w-full text-sm">
+   362→                        <thead className="sticky top-0 z-[1]">
+   363→                          <tr className="bg-slate-50 border-b border-slate-200">
+   364→                            {["Predecessor", "", "Type", "Lag", "", "Successor", "External"].map((h, idx) => (
+   365→                              <th key={idx} className="text-left font-medium text-slate-500 px-3 py-2.5 whitespace-nowrap text-xs uppercase tracking-wide">{h}</th>
+   366→                            ))}
+   367→                          </tr>
+   368→                        </thead>
+   369→                        <tbody>
+   370→                          {(dependencies.data?.items ?? []).map((d) => (
+   371→                            <tr key={d.id} className="border-b border-slate-100 last:border-0">
+   372→                              <td className="px-3 py-2.5"><span className="font-mono text-xs text-slate-500">{d.predecessor.code}</span><span className="block text-slate-700 truncate max-w-56">{d.predecessor.name}</span></td>
+   373→                              <td className="px-3 py-2.5"><ArrowRight className="h-3.5 w-3.5 text-slate-300" /></td>
+   374→                              <td className="px-3 py-2.5 font-medium text-slate-700">{d.depType}{d.lagDays ? ` +${d.lagDays}d` : ""}</td>
+   375→                              <td className="px-3 py-2.5 tabular-nums text-slate-500">{d.lagDays}d</td>
+   376→                              <td className="px-3 py-2.5"></td>
+   377→                              <td className="px-3 py-2.5"><span className="font-mono text-xs text-slate-500">{d.successor.code}</span><span className="block text-slate-700 truncate max-w-56">{d.successor.name}</span></td>
+   378→                              <td className="px-3 py-2.5 text-xs text-slate-400">{d.isExternal ? "yes" : "no"}</td>
+   379→                            </tr>
+   380→                          ))}
+   381→                        </tbody>
+   382→                      </table>
+   383→                    </div>
+   384→                  ))}
+   385→            </>
+   386→          )}
+   387→      </SectionCard>
+   388→
+   389→      {/* Risk dialog */}
+   390→      <Dialog open={Boolean(riskDialog)} onOpenChange={(o) => { if (!o) setRiskDialog(null); }}>
+   391→        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+   392→          <DialogHeader>
+   393→            <DialogTitle>{riskDialog?.mode === "edit" ? `Edit ${riskDialog.target?.code}` : "Add risk"}</DialogTitle>
+   394→            <DialogDescription>Score is computed as probability × impact; severity derives from the score.</DialogDescription>
+   395→          </DialogHeader>
+   396→          <div className="grid grid-cols-2 gap-3">
+   397→            <div className="space-y-1 col-span-2">
+   398→              <Label htmlFor="rk-title">Title *</Label>
+   399→              <Input id="rk-title" value={riskForm.title} onChange={(e) => setRiskForm((p) => ({ ...p, title: e.target.value }))} placeholder="What could go wrong?" />
+   400→            </div>
+   401→            <div className="space-y-1 col-span-2">
+   402→              <Label htmlFor="rk-desc">Description</Label>
+   403→              <Textarea id="rk-desc" rows={2} value={riskForm.description} onChange={(e) => setRiskForm((p) => ({ ...p, description: e.target.value }))} />
+   404→            </div>
+   405→            <div className="space-y-1">
+   406→              <Label>Category</Label>
+   407→              <Select value={riskForm.category} onValueChange={(v) => setRiskForm((p) => ({ ...p, category: v }))}>
+   408→                <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+   409→                <SelectContent>{RISK_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+   410→              </Select>
+   411→            </div>
+   412→            <div className="space-y-1">
+   413→              <Label>Response strategy</Label>
+   414→              <Select value={riskForm.responseStrategy} onValueChange={(v) => setRiskForm((p) => ({ ...p, responseStrategy: v }))}>
+   415→                <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+   416→                <SelectContent>{STRATEGIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+   417→              </Select>
+   418→            </div>
+   419→            <div className="space-y-1">
+   420→              <Label htmlFor="rk-p">Probability (1–5)</Label>
+   421→              <Select value={riskForm.probability} onValueChange={(v) => setRiskForm((p) => ({ ...p, probability: v }))}>
+   422→                <SelectTrigger className="bg-white" id="rk-p"><SelectValue /></SelectTrigger>
+   423→                <SelectContent>{[1, 2, 3, 4, 5].map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
+   424→              </Select>
+   425→            </div>
+   426→            <div className="space-y-1">
+   427→              <Label htmlFor="rk-i">Impact (1–5)</Label>
+   428→              <Select value={riskForm.impact} onValueChange={(v) => setRiskForm((p) => ({ ...p, impact: v }))}>
+   429→                <SelectTrigger className="bg-white" id="rk-i"><SelectValue /></SelectTrigger>
+   430→                <SelectContent>{[1, 2, 3, 4, 5].map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
+   431→              </Select>
+   432→            </div>
+   433→            <div className="col-span-2 rounded-md bg-slate-50 border border-slate-200 px-3 py-2 text-sm">
+   434→              Score: <span className="font-semibold tabular-nums">{Number(riskForm.probability) * Number(riskForm.impact)}</span>
+   435→              <span className="text-slate-400"> — severity {(Number(riskForm.probability) * Number(riskForm.impact)) >= 16 ? "CRITICAL" : (Number(riskForm.probability) * Number(riskForm.impact)) >= 10 ? "HIGH" : (Number(riskForm.probability) * Number(riskForm.impact)) >= 5 ? "MEDIUM" : "LOW"}</span>
+   436→            </div>
+   437→            <div className="space-y-1">
+   438→              <Label htmlFor="rk-owner">Owner</Label>
+   439→              <Input id="rk-owner" value={riskForm.ownerName} onChange={(e) => setRiskForm((p) => ({ ...p, ownerName: e.target.value }))} placeholder="Responsible person" />
+   440→            </div>
+   441→            <div className="space-y-1">
+   442→              <Label htmlFor="rk-due">Review by</Label>
+   443→              <Input id="rk-due" type="date" value={riskForm.dueDate} onChange={(e) => setRiskForm((p) => ({ ...p, dueDate: e.target.value }))} />
+   444→            </div>
+   445→            <div className="space-y-1 col-span-2">
+   446→              <Label htmlFor="rk-mit">Mitigation</Label>
+   447→              <Textarea id="rk-mit" rows={2} value={riskForm.mitigation} onChange={(e) => setRiskForm((p) => ({ ...p, mitigation: e.target.value }))} placeholder="Planned response" />
+   448→            </div>
+   449→          </div>
+   450→          <DialogFooter>
+   451→            <Button variant="outline" onClick={() => setRiskDialog(null)}>Cancel</Button>
+   452→            <Button disabled={savingRisk} onClick={() => void saveRisk()}>{savingRisk ? "Saving…" : riskDialog?.mode === "edit" ? "Save changes" : "Register risk"}</Button>
+   453→          </DialogFooter>
+   454→        </DialogContent>
+   455→      </Dialog>
+   456→
+   457→      {/* Issue dialog */}
+   458→      <Dialog open={Boolean(issueDialog)} onOpenChange={(o) => { if (!o) setIssueDialog(null); }}>
+   459→        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+   460→          <DialogHeader>
+   461→            <DialogTitle>{issueDialog?.mode === "edit" ? `Edit ${issueDialog.target?.code}` : "Log issue"}</DialogTitle>
+   462→            <DialogDescription>CRITICAL severity auto-propagates to priority.</DialogDescription>
+   463→          </DialogHeader>
+   464→          <div className="grid grid-cols-2 gap-3">
+   465→            <div className="space-y-1 col-span-2">
+   466→              <Label htmlFor="is-title">Title *</Label>
+   467→              <Input id="is-title" value={issueForm.title} onChange={(e) => setIssueForm((p) => ({ ...p, title: e.target.value }))} placeholder="What is going wrong?" />
+   468→            </div>
+   469→            <div className="space-y-1 col-span-2">
+   470→              <Label htmlFor="is-desc">Description</Label>
+   471→              <Textarea id="is-desc" rows={2} value={issueForm.description} onChange={(e) => setIssueForm((p) => ({ ...p, description: e.target.value }))} />
+   472→            </div>
+   473→            <div className="space-y-1">
+   474→              <Label>Category</Label>
+   475→              <Select value={issueForm.category} onValueChange={(v) => setIssueForm((p) => ({ ...p, category: v }))}>
+   476→                <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+   477→                <SelectContent>{ISSUE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+   478→              </Select>
+   479→            </div>
+   480→            <div className="space-y-1">
+   481→              <Label>Severity</Label>
+   482→              <Select value={issueForm.severity} onValueChange={(v) => setIssueForm((p) => ({ ...p, severity: v }))}>
+   483→                <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+   484→                <SelectContent>{ISSUE_SEVERITY.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+   485→              </Select>
+   486→            </div>
+   487→            <div className="space-y-1">
+   488→              <Label htmlFor="is-owner">Owner</Label>
+   489→              <Input id="is-owner" value={issueForm.ownerName} onChange={(e) => setIssueForm((p) => ({ ...p, ownerName: e.target.value }))} />
+   490→            </div>
+   491→            <div className="space-y-1">
+   492→              <Label htmlFor="is-raised">Raised by</Label>
+   493→              <Input id="is-raised" value={issueForm.raisedBy} onChange={(e) => setIssueForm((p) => ({ ...p, raisedBy: e.target.value }))} placeholder="Source / person" />
+   494→            </div>
+   495→            <div className="space-y-1">
+   496→              <Label htmlFor="is-due">Due</Label>
+   497→              <Input id="is-due" type="date" value={issueForm.dueDate} onChange={(e) => setIssueForm((p) => ({ ...p, dueDate: e.target.value }))} />
+   498→            </div>
+   499→            <div className="space-y-1">
+   500→              <Label>Escalation</Label>
+   501→              <Select value={issueForm.escalationLevel} onValueChange={(v) => setIssueForm((p) => ({ ...p, escalationLevel: v }))}>
+   502→                <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+   503→                <SelectContent>{["NONE", "PROJECT", "PROGRAM", "PORTFOLIO"].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+   504→              </Select>
+   505→            </div>
+   506→            <div className="space-y-1 col-span-2">
+   507→              <Label htmlFor="is-impact">Impact</Label>
+   508→              <Input id="is-impact" value={issueForm.impact} onChange={(e) => setIssueForm((p) => ({ ...p, impact: e.target.value }))} placeholder="Consequence if unresolved" />
+   509→            </div>
+   510→            {issueDialog?.mode === "edit" && (
+   511→              <div className="space-y-1 col-span-2">
+   512→                <Label htmlFor="is-res">Resolution (record when resolving/closing)</Label>
+   513→                <Input id="is-res" value={issueForm.resolution} onChange={(e) => setIssueForm((p) => ({ ...p, resolution: e.target.value }))} placeholder="How was this resolved?" />
+   514→              </div>
+   515→            )}
+   516→          </div>
+   517→          <DialogFooter>
+   518→            <Button variant="outline" onClick={() => setIssueDialog(null)}>Cancel</Button>
+   519→            <Button disabled={savingIssue} onClick={() => void saveIssue()}>{savingIssue ? "Saving…" : issueDialog?.mode === "edit" ? "Save changes" : "Log issue"}</Button>
+   520→          </DialogFooter>
+   521→        </DialogContent>
+   522→      </Dialog>
+   523→
+   524→      {/* Assumption dialog */}
+   525→      <Dialog open={Boolean(asmDialog)} onOpenChange={(o) => { if (!o) setAsmDialog(null); }}>
+   526→        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+   527→          <DialogHeader>
+   528→            <DialogTitle>{asmDialog?.mode === "edit" ? `Edit ${asmDialog.target?.code}` : "Add assumption"}</DialogTitle>
+   529→            <DialogDescription>Setting status to VALID stamps the validation date automatically.</DialogDescription>
+   530→          </DialogHeader>
+   531→          <div className="grid grid-cols-2 gap-3">
+   532→            <div className="space-y-1 col-span-2">
+   533→              <Label htmlFor="as-desc">Assumption *</Label>
+   534→              <Textarea id="as-desc" rows={2} value={asmForm.description} onChange={(e) => setAsmForm((p) => ({ ...p, description: e.target.value }))} placeholder="We assume that…" />
+   535→            </div>
+   536→            <div className="space-y-1 col-span-2">
+   537→              <Label htmlFor="as-rat">Rationale</Label>
+   538→              <Textarea id="as-rat" rows={2} value={asmForm.rationale} onChange={(e) => setAsmForm((p) => ({ ...p, rationale: e.target.value }))} />
+   539→            </div>
+   540→            <div className="space-y-1 col-span-2">
+   541→              <Label htmlFor="as-imp">Impact if false</Label>
+   542→              <Textarea id="as-imp" rows={2} value={asmForm.impactIfFalse} onChange={(e) => setAsmForm((p) => ({ ...p, impactIfFalse: e.target.value }))} />
+   543→            </div>
+   544→            <div className="space-y-1">
+   545→              <Label htmlFor="as-owner">Owner</Label>
+   546→              <Input id="as-owner" value={asmForm.ownerName} onChange={(e) => setAsmForm((p) => ({ ...p, ownerName: e.target.value }))} />
+   547→            </div>
+   548→            <div className="space-y-1">
+   549→              <Label htmlFor="as-due">Review by</Label>
+   550→              <Input id="as-due" type="date" value={asmForm.dueDate} onChange={(e) => setAsmForm((p) => ({ ...p, dueDate: e.target.value }))} />
+   551→            </div>
+   552→          </div>
+   553→          <DialogFooter>
+   554→            <Button variant="outline" onClick={() => setAsmDialog(null)}>Cancel</Button>
+   555→            <Button disabled={savingAsm} onClick={() => void saveAsm()}>{savingAsm ? "Saving…" : asmDialog?.mode === "edit" ? "Save changes" : "Record assumption"}</Button>
+   556→          </DialogFooter>
+   557→        </DialogContent>
+   558→      </Dialog>
+   559→    </div>
+   560→  );
+   561→}
+   562→

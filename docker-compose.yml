@@ -1,0 +1,77 @@
+# ==============================================================
+# PM CONTROL TOWER — Docker Compose deployment
+# Usage:
+#   1. cp .env.example .env   → set JWT_SECRET + REALTIME_SECRET (openssl rand -hex 32)
+#   2. docker compose up -d --build
+#   3. Open http://<host>:3000  → login with the reference dataset
+#      (see docs/08-REFERENCE-DATA-GUIDE.md — change passwords on first login!)
+# ==============================================================
+services:
+  app:
+    build: .
+    image: pm-control-tower:1.0.0
+    container_name: pmct-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: file:/app/db/pmct.db
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
+      REALTIME_SECRET_KEY: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      REALTIME_SECRET: ${REALTIME_SECRET:?Set REALTIME_SECRET in .env}
+      REALTIME_URL: http://realtime:3003
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    volumes:
+      - pmct-db:/app/db
+    ports:
+      - "${PMCT_PORT:-3000}:3000"
+    depends_on:
+      realtime:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/api/system/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  realtime:
+    image: pm-control-tower:1.0.0
+    container_name: pmct-realtime
+    restart: unless-stopped
+    command: ["bun", "mini-services/realtime/index.ts"]
+    environment:
+      REALTIME_PORT: "3003"
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      REALTIME_SECRET_KEY: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      REALTIME_SECRET: ${REALTIME_SECRET:?Set REALTIME_SECRET in .env}
+    expose:
+      - "3003"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3003/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # Optional TLS edge. Enable with:  docker compose --profile tls up -d
+  # Put your fullchain/privkey in ./deploy/tls/ and set TLS_DOMAIN in .env
+  caddy:
+    image: caddy:2-alpine
+    container_name: pmct-caddy
+    profiles: ["tls"]
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      TLS_DOMAIN: ${TLS_DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - ./deploy/tls:/etc/caddy/tls:ro
+      - caddy-data:/data
+    depends_on:
+      - app
+
+volumes:
+  pmct-db:
+  caddy-data:

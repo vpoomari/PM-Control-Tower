@@ -1,0 +1,669 @@
+     1→"use client";
+     2→// PM CONTROL TOWER — Timesheets (core execute module)
+     3→// Role-aware: "My timesheet" editor for users with a resource record, approval queue for
+     4→// timesheet.approve holders, plus a full status-filtered register. Week starts Monday.
+     5→
+     6→import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+     7→import { toast } from "sonner";
+     8→import { api, useApi, useRealtimeRefetch } from "@/lib/client";
+     9→import { addDays, fmtDateTime, num, round2, startOfWeek } from "@/lib/constants";
+    10→import {
+    11→  PageHeader, SectionCard, StatusChip, Toolbar, LoadingBlock, ErrorBlock, EmptyState,
+    12→  ConfirmButton, Button, Badge, Input, Metric,
+    13→} from "@/components/pmct/kit";
+    14→import { Textarea } from "@/components/ui/textarea";
+    15→import { Checkbox } from "@/components/ui/checkbox";
+    16→import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+    17→import {
+    18→  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+    19→} from "@/components/ui/dialog";
+    20→import {
+    21→  DAY_HEADERS, ProjectSelect, TaskSelect, WeekNav, hasPerm, useMe, useProjectOptions, weekLabel,
+    22→} from "@/views/execute/shared/pickers";
+    23→import { Trash2, Plus, Send, Save, Lock, ClipboardCheck, CalendarDays } from "lucide-react";
+    24→
+    25→// ---- Types (mirror API payloads) ----
+    26→interface TSResourceLite { id: string; name: string; employeeCode: string; department: string }
+    27→interface TSListItem {
+    28→  id: string; resourceId: string; resource: TSResourceLite; userId: string | null;
+    29→  weekStart: string; weekEnd: string; status: string;
+    30→  totalHours: number; regularHours: number; overtimeHours: number;
+    31→  billableHours: number; nonBillableHours: number;
+    32→  comments: string | null; rejectionReason: string | null;
+    33→  submittedAt: string | null; approvedAt: string | null; lockedAt: string | null;
+    34→  approverName: string | null; entriesCount: number; isOwn: boolean; canEdit: boolean;
+    35→}
+    36→interface TSListData { scope: string; timesheets: TSListItem[]; total: number; statusCounts: Record<string, number> }
+    37→interface TSEntry {
+    38→  id: string; entryDate: string; projectId: string | null; taskId: string | null;
+    39→  activity: string | null; startTime: string | null; endTime: string | null; breakMinutes: number;
+    40→  hours: number; regularHours: number; overtimeHours: number; billableHours: number; nonBillableHours: number;
+    41→  entryType: string; billable: boolean; comments: string | null;
+    42→}
+    43→interface TSDetail { timesheet: TSListItem & { entries: TSEntry[] } }
+    44→interface ResLite { id: string; name: string; email: string; userId: string | null }
+    45→
+    46→const EDITABLE = ["DRAFT", "REJECTED"];
+    47→const STATUS_TABS = ["ALL", "DRAFT", "SUBMITTED", "UNDER_REVIEW", "APPROVED", "REJECTED", "LOCKED"] as const;
+    48→
+    49→interface EditorRow {
+    50→  key: string; date: string; projectId: string; taskId: string; activity: string;
+    51→  startTime: string; endTime: string; breakMinutes: number; hours: number;
+    52→  overtime: number; billable: boolean; comment: string;
+    53→}
+    54→
+    55→let rowSeq = 0;
+    56→function newRow(date: string): EditorRow {
+    57→  rowSeq += 1;
+    58→  return { key: `r${Date.now()}-${rowSeq}`, date, projectId: "", taskId: "", activity: "", startTime: "", endTime: "", breakMinutes: 0, hours: 8, overtime: 0, billable: true, comment: "" };
+    59→}
+    60→
+    61→function calcHours(start: string, end: string, breakMinutes: number): number | null {
+    62→  if (!start || !end) return null;
+    63→  const [sh, sm] = start.split(":").map(Number);
+    64→  const [eh, em] = end.split(":").map(Number);
+    65→  if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return null;
+    66→  const mins = eh * 60 + em - (sh * 60 + sm) - (breakMinutes || 0);
+    67→  return mins > 0 ? round2(mins / 60) : null;
+    68→}
+    69→
+    70→function dayIso(weekStart: Date, index: number): string {
+    71→  return addDays(weekStart, index).toISOString().slice(0, 10);
+    72→}
+    73→
+    74→export default function TimesheetsView() {
+    75→  const me = useMe();
+    76→  const canApprove = hasPerm(me, "timesheet.approve");
+    77→  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
+    78→  const weekKey = weekStart.toISOString().slice(0, 10);
+    79→
+    80→  const { options: projectOptions } = useProjectOptions();
+    81→
+    82→  // My resource record (determines whether the personal editor is shown)
+    83→  const [myResource, setMyResource] = useState<ResLite | null>(null);
+    84→  const [resourceChecked, setResourceChecked] = useState(false);
+    85→  useEffect(() => {
+    86→    if (!me) return;
+    87→    let alive = true;
+    88→    api.get<{ resources: ResLite[] }>("/api/resources")
+    89→      .then((d) => {
+    90→        if (!alive) return;
+    91→        const mine = d.resources.find((r) => r.userId === me.id) || d.resources.find((r) => r.email === me.email) || null;
+    92→        setMyResource(mine ? { id: mine.id, name: mine.name, email: mine.email, userId: mine.userId } : null);
+    93→      })
+    94→      .catch(() => { /* no access — editor stays hidden */ })
+    95→      .finally(() => { if (alive) setResourceChecked(true); });
+    96→    return () => { alive = false; };
+    97→  }, [me]);
+    98→
+    99→  // ---- Listing (scope: all for approvers, mine otherwise) ----
+   100→  const scope = canApprove ? "all" : "mine";
+   101→  const list = useApi<TSListData>(`/api/timesheets?scope=${scope}`);
+   102→  useRealtimeRefetch(list.refetch, ["timesheet:submitted", "timesheet:approved", "actuals:changed"]);
+   103→
+   104→  const [statusTab, setStatusTab] = useState<(typeof STATUS_TABS)[number]>("ALL");
+   105→  const registerRows = useMemo(() => {
+   106→    const rows = list.data?.timesheets ?? [];
+   107→    return statusTab === "ALL" ? rows : rows.filter((t) => t.status === statusTab);
+   108→  }, [list.data, statusTab]);
+   109→
+   110→  // ---- My timesheet for the selected week ----
+   111→  const mineForWeek = useMemo(() => {
+   112→    if (!myResource) return null;
+   113→    return (list.data?.timesheets ?? []).find((t) => t.resourceId === myResource.id && t.weekStart.slice(0, 10) === weekKey) ?? null;
+   114→  }, [list.data, myResource, weekKey]);
+   115→
+   116→  const mineDetail = useApi<TSDetail>(mineForWeek ? `/api/timesheets/${mineForWeek.id}` : null);
+   117→  const editable = Boolean(mineForWeek && EDITABLE.includes(mineForWeek.status));
+   118→
+   119→  // ---- Editor state ----
+   120→  const [rows, setRows] = useState<EditorRow[]>([]);
+   121→  const [weekComments, setWeekComments] = useState("");
+   122→  const [loadedTsId, setLoadedTsId] = useState<string | null>(null);
+   123→  const [saving, setSaving] = useState(false);
+   124→
+   125→  useEffect(() => {
+   126→    const ts = mineDetail.data?.timesheet;
+   127→    if (!ts || !editable) return;
+   128→    if (loadedTsId === ts.id) return;
+   129→    setRows(ts.entries.map((e) => {
+   130→      rowSeq += 1;
+   131→      return {
+   132→        key: `e${e.id}-${rowSeq}`, date: e.entryDate.slice(0, 10), projectId: e.projectId ?? "",
+   133→        taskId: e.taskId ?? "", activity: e.activity ?? "", startTime: e.startTime ?? "", endTime: e.endTime ?? "",
+   134→        breakMinutes: e.breakMinutes ?? 0, hours: e.hours ?? 0, overtime: e.overtimeHours ?? 0,
+   135→        billable: e.billable, comment: e.comments ?? "",
+   136→      };
+   137→    }));
+   138→    setWeekComments(ts.comments ?? "");
+   139→    setLoadedTsId(ts.id);
+   140→  }, [mineDetail.data, editable, loadedTsId]);
+   141→
+   142→  // Fresh editor when there is no existing timesheet for the week
+   143→  useEffect(() => {
+   144→    if (mineForWeek === null && myResource) {
+   145→      setRows([newRow(dayIso(weekStart, 0))]);
+   146→      setWeekComments("");
+   147→      setLoadedTsId(null);
+   148→    }
+   149→  }, [mineForWeek, myResource, weekStart]);
+   150→
+   151→  const updateRow = (key: string, patch: Partial<EditorRow>) =>
+   152→    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+   153→
+   154→  const onTimeField = (row: EditorRow, patch: Partial<EditorRow>) => {
+   155→    const next = { ...row, ...patch };
+   156→    const auto = calcHours(next.startTime, next.endTime, next.breakMinutes);
+   157→    if (auto !== null) next.hours = auto;
+   158→    updateRow(row.key, next);
+   159→  };
+   160→
+   161→  const totals = useMemo(() => {
+   162→    const valid = rows.filter((r) => r.hours > 0);
+   163→    const total = round2(valid.reduce((s, r) => s + r.hours, 0));
+   164→    const overtime = round2(valid.reduce((s, r) => s + (r.overtime || 0), 0));
+   165→    const billable = round2(valid.filter((r) => r.billable).reduce((s, r) => s + r.hours, 0));
+   166→    return { total, regular: round2(Math.max(0, total - overtime)), overtime, billable, nonBillable: round2(total - billable), count: valid.length };
+   167→  }, [rows]);
+   168→
+   169→  const buildEntries = useCallback(() => {
+   170→    return rows
+   171→      .filter((r) => r.hours > 0 || r.projectId || r.activity)
+   172→      .map((r) => ({
+   173→        entryDate: r.date,
+   174→        projectId: r.projectId || null,
+   175→        taskId: r.taskId || null,
+   176→        activity: r.activity || null,
+   177→        startTime: r.startTime || null,
+   178→        endTime: r.endTime || null,
+   179→        breakMinutes: r.breakMinutes || 0,
+   180→        hours: r.hours || 0,
+   181→        overtimeHours: r.overtime || 0,
+   182→        billable: r.billable,
+   183→        comments: r.comment || null,
+   184→      }));
+   185→  }, [rows]);
+   186→
+   187→  const validate = (): string | null => {
+   188→    const entries = buildEntries();
+   189→    if (!entries.length) return "Add at least one entry with hours before saving.";
+   190→    const withHours = entries.filter((e) => e.hours > 0);
+   191→    if (!withHours.length) return "Entries need hours greater than zero.";
+   192→    if (withHours.some((e) => !e.projectId)) return "Every entry with hours must reference a project.";
+   193→    for (const e of withHours) {
+   194→      if (e.overtimeHours && e.overtimeHours > (e.hours ?? 0)) return "Overtime cannot exceed the entry hours.";
+   195→      if ((e.startTime && !e.endTime) || (!e.startTime && e.endTime)) return "Entries with times need both start and end (or clear both).";
+   196→    }
+   197→    return null;
+   198→  };
+   199→
+   200→  const saveDraft = async (thenSubmit = false): Promise<string | null> => {
+   201→    const err = validate();
+   202→    if (err) { toast.error(err); return null; }
+   203→    if (!myResource) return null;
+   204→    setSaving(true);
+   205→    try {
+   206→      const body = { resourceId: myResource.id, weekStart: weekStart.toISOString(), comments: weekComments || null, entries: buildEntries() };
+   207→      let tsId = loadedTsId;
+   208→      if (mineForWeek && EDITABLE.includes(mineForWeek.status)) tsId = mineForWeek.id;
+   209→      if (tsId) {
+   210→        await api.patch(`/api/timesheets/${tsId}`, { comments: weekComments || null, entries: buildEntries() });
+   211→      } else {
+   212→        const d = await api.post<{ timesheet: { id: string } }>("/api/timesheets", body);
+   213→        tsId = d.timesheet.id;
+   214→      }
+   215→      toast.success(thenSubmit ? "Saved — submitting…" : "Draft saved");
+   216→      if (thenSubmit && tsId) {
+   217→        await api.post(`/api/timesheets/${tsId}/submit`);
+   218→        toast.success("Timesheet submitted for approval");
+   219→      }
+   220→      setLoadedTsId(tsId);
+   221→      await list.refetch();
+   222→      if (tsId) await mineDetail.refetch();
+   223→      return tsId;
+   224→    } catch (e) {
+   225→      toast.error(e instanceof Error ? e.message : "Save failed");
+   226→      return null;
+   227→    } finally {
+   228→      setSaving(false);
+   229→    }
+   230→  };
+   231→
+   232→  const deleteDraft = async () => {
+   233→    if (!mineForWeek) return;
+   234→    try {
+   235→      await api.del(`/api/timesheets/${mineForWeek.id}`);
+   236→      toast.success("Draft deleted");
+   237→      setRows([newRow(dayIso(weekStart, 0))]);
+   238→      setLoadedTsId(null);
+   239→      await list.refetch();
+   240→    } catch (e) {
+   241→      toast.error(e instanceof Error ? e.message : "Delete failed");
+   242→    }
+   243→  };
+   244→
+   245→  // ---- Approvals ----
+   246→  const [approvalView, setApprovalView] = useState<"PENDING" | "APPROVED">("PENDING");
+   247→  const pending = useMemo(() => (list.data?.timesheets ?? []).filter((t) => ["SUBMITTED", "UNDER_REVIEW"].includes(t.status)), [list.data]);
+   248→  const approved = useMemo(() => (list.data?.timesheets ?? []).filter((t) => t.status === "APPROVED"), [list.data]);
+   249→  const [rejectTarget, setRejectTarget] = useState<TSListItem | null>(null);
+   250→  const [rejectReason, setRejectReason] = useState("");
+   251→  const [detailId, setDetailId] = useState<string | null>(null);
+   252→  const detail = useApi<TSDetail>(detailId ? `/api/timesheets/${detailId}` : null);
+   253→  const detailTs = detail.data?.timesheet ?? null;
+   254→
+   255→  // Task-name map for read-only tables (entries carry ids only)
+   256→  const [taskLabels, setTaskLabels] = useState<Record<string, string>>({});
+   257→  const [projectLabels, setProjectLabels] = useState<Record<string, string>>({});
+   258→  useEffect(() => {
+   259→    const map: Record<string, string> = {};
+   260→    projectOptions.forEach((p) => { map[p.id] = p.code; });
+   261→    setProjectLabels(map);
+   262→  }, [projectOptions]);
+   263→
+   264→  const loadTaskLabels = useCallback(async (entries: TSEntry[]) => {
+   265→    const projectIds = [...new Set(entries.map((e) => e.projectId).filter((p): p is string => Boolean(p)))];
+   266→    const taskIds = [...new Set(entries.map((e) => e.taskId).filter((t): t is string => Boolean(t)))];
+   267→    if (!taskIds.length) return;
+   268→    for (const pid of projectIds) {
+   269→      try {
+   270→        const d = await api.get<{ items: { id: string; code: string; name: string }[] }>(`/api/projects/${pid}/tasks`);
+   271→        setTaskLabels((prev) => {
+   272→          const next = { ...prev };
+   273→          d.items.forEach((t) => { next[t.id] = t.code; });
+   274→          return next;
+   275→        });
+   276→      } catch { /* label lookup best-effort */ }
+   277→    }
+   278→  }, []);
+   279→
+   280→  useEffect(() => {
+   281→    const ts = detail.data?.timesheet;
+   282→    if (ts) void loadTaskLabels(ts.entries);
+   283→  }, [detail.data, loadTaskLabels]);
+   284→
+   285→  useEffect(() => {
+   286→    const ts = mineDetail.data?.timesheet;
+   287→    if (ts) void loadTaskLabels(ts.entries);
+   288→  }, [mineDetail.data, loadTaskLabels]);
+   289→
+   290→  const act = async (fn: () => Promise<unknown>, okMsg: string) => {
+   291→    try {
+   292→      await fn();
+   293→      toast.success(okMsg);
+   294→      await list.refetch();
+   295→      if (detailId) await detail.refetch();
+   296→      if (mineForWeek) await mineDetail.refetch();
+   297→    } catch (e) {
+   298→      toast.error(e instanceof Error ? e.message : "Action failed");
+   299→    }
+   300→  };
+   301→
+   302→  const counts = list.data?.statusCounts ?? {};
+   303→
+   304→  if (!me || (list.loading && !list.data)) return <LoadingBlock label="Loading timesheets…" />;
+   305→  if (list.error && !list.data) return <ErrorBlock message={list.error} onRetry={list.refetch} />;
+   306→
+   307→  const showMine = Boolean(myResource) && resourceChecked;
+   308→  const ts = mineDetail.data?.timesheet ?? null;
+   309→  const locked = Boolean(mineForWeek && ["APPROVED", "LOCKED", "SUBMITTED", "UNDER_REVIEW"].includes(mineForWeek.status));
+   310→
+   311→  return (
+   312→    <div className="space-y-5">
+   313→      <PageHeader
+   314→        title="Timesheets"
+   315→        subtitle="Capture effort, submit for approval and govern the actuals that feed cost, EVM and health."
+   316→        breadcrumb={["Home", "Execute", "Timesheets"]}
+   317→        actions={<WeekNav weekStart={weekStart} onChange={(d) => { setWeekStart(d); setLoadedTsId(null); }} />}
+   318→      />
+   319→
+   320→      {/* MY TIMESHEET */}
+   321→      {showMine && (
+   322→        <SectionCard
+   323→          title="My timesheet"
+   324→          description={`Filing as ${myResource?.name} · week of ${weekKey}`}
+   325→          actions={
+   326→            mineForWeek ? (
+   327→              <div className="flex items-center gap-2">
+   328→                <StatusChip status={mineForWeek.status} />
+   329→                <Badge variant="outline" className="border-slate-200 text-slate-500">{num(mineForWeek.totalHours)}h</Badge>
+   330→              </div>
+   331→            ) : <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">No timesheet yet — create one</Badge>
+   332→          }
+   333→        >
+   334→          {mineDetail.loading && !mineDetail.data ? <LoadingBlock label="Loading your week…" /> : (
+   335→            <>
+   336→              {mineForWeek?.status === "REJECTED" && mineForWeek.rejectionReason && (
+   337→                <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+   338→                  <span className="font-semibold">Rejected by {mineForWeek.approverName || "approver"}:</span> {mineForWeek.rejectionReason} — update your entries and resubmit.
+   339→                </div>
+   340→              )}
+   341→              {locked && ts ? (
+   342→                <ReadOnlyWeek ts={ts} projectLabels={projectLabels} taskLabels={taskLabels} />
+   343→              ) : (
+   344→                <>
+   345→                  <div className="space-y-3">
+   346→                    {DAY_HEADERS.map((label, idx) => {
+   347→                      const iso = dayIso(weekStart, idx);
+   348→                      const dayRows = rows.filter((r) => r.date === iso);
+   349→                      const dayTotal = round2(dayRows.reduce((s, r) => s + (r.hours || 0), 0));
+   350→                      return (
+   351→                        <div key={iso} className="rounded-lg border border-slate-200">
+   352→                          <div className="flex items-center justify-between px-3 py-2 bg-slate-50/70 border-b border-slate-100 rounded-t-lg">
+   353→                            <div className="flex items-center gap-2">
+   354→                              <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
+   355→                              <span className="text-xs font-semibold text-slate-700">{label} <span className="text-slate-400 font-normal">{iso.slice(5)}</span></span>
+   356→                            </div>
+   357→                            <div className="flex items-center gap-2">
+   358→                              <span className={`text-xs tabular-nums ${dayTotal > 24 ? "text-red-600 font-semibold" : "text-slate-500"}`}>{num(dayTotal)}h</span>
+   359→                              <Button variant="ghost" size="sm" className="h-7 text-xs text-blue-600" onClick={() => setRows((p) => [...p, newRow(iso)])}>
+   360→                                <Plus className="h-3 w-3 mr-1" />Entry
+   361→                              </Button>
+   362→                            </div>
+   363→                          </div>
+   364→                          {dayRows.length === 0 ? (
+   365→                            <p className="px-3 py-2 text-xs text-slate-400">No entries</p>
+   366→                          ) : (
+   367→                            <div className="p-3 space-y-2">
+   368→                              {dayRows.map((r) => (
+   369→                                <div key={r.key} className="rounded-md border border-slate-200 bg-white p-2.5 space-y-2">
+   370→                                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2">
+   371→                                    <ProjectSelect value={r.projectId} onChange={(v) => updateRow(r.key, { projectId: v, taskId: "" })} options={projectOptions} />
+   372→                                    <TaskSelect projectId={r.projectId} value={r.taskId} onChange={(v) => updateRow(r.key, { taskId: v })} />
+   373→                                    <Input value={r.activity} onChange={(e) => updateRow(r.key, { activity: e.target.value })} placeholder="Activity" className="h-9" />
+   374→                                    <div className="flex items-center justify-end">
+   375→                                      <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500 hover:text-red-600" onClick={() => setRows((p) => p.filter((x) => x.key !== r.key))} aria-label="Remove entry">
+   376→                                        <Trash2 className="h-3.5 w-3.5 mr-1" />Remove
+   377→                                      </Button>
+   378→                                    </div>
+   379→                                  </div>
+   380→                                  <div className="grid grid-cols-3 md:grid-cols-6 xl:grid-cols-7 gap-2 items-center">
+   381→                                    <div>
+   382→                                      <label className="text-[10px] uppercase text-slate-400">Start</label>
+   383→                                      <Input type="time" value={r.startTime} onChange={(e) => onTimeField(r, { startTime: e.target.value })} className="h-8" />
+   384→                                    </div>
+   385→                                    <div>
+   386→                                      <label className="text-[10px] uppercase text-slate-400">End</label>
+   387→                                      <Input type="time" value={r.endTime} onChange={(e) => onTimeField(r, { endTime: e.target.value })} className="h-8" />
+   388→                                    </div>
+   389→                                    <div>
+   390→                                      <label className="text-[10px] uppercase text-slate-400">Break (m)</label>
+   391→                                      <Input type="number" min={0} value={r.breakMinutes || ""} onChange={(e) => onTimeField(r, { breakMinutes: Number(e.target.value) || 0 })} className="h-8" />
+   392→                                    </div>
+   393→                                    <div>
+   394→                                      <label className="text-[10px] uppercase text-slate-400">Hours {calcHours(r.startTime, r.endTime, r.breakMinutes) !== null && <span className="text-blue-500 normal-case">(auto)</span>}</label>
+   395→                                      <Input type="number" min={0} max={24} step={0.25} value={r.hours || ""} onChange={(e) => updateRow(r.key, { hours: Number(e.target.value) || 0 })} className="h-8" />
+   396→                                    </div>
+   397→                                    <div>
+   398→                                      <label className="text-[10px] uppercase text-slate-400">Overtime</label>
+   399→                                      <Input type="number" min={0} max={24} step={0.25} value={r.overtime || ""} onChange={(e) => updateRow(r.key, { overtime: Number(e.target.value) || 0 })} className="h-8" />
+   400→                                    </div>
+   401→                                    <div className="flex items-center gap-1.5 pt-4">
+   402→                                      <Checkbox checked={r.billable} onCheckedChange={(c) => updateRow(r.key, { billable: c === true })} id={`b-${r.key}`} />
+   403→                                      <label htmlFor={`b-${r.key}`} className="text-xs text-slate-600">Billable</label>
+   404→                                    </div>
+   405→                                    <div className="col-span-3 md:col-span-6 xl:col-span-1">
+   406→                                      <label className="text-[10px] uppercase text-slate-400">Comment</label>
+   407→                                      <Input value={r.comment} onChange={(e) => updateRow(r.key, { comment: e.target.value })} placeholder="Note" className="h-8" />
+   408→                                    </div>
+   409→                                  </div>
+   410→                                </div>
+   411→                              ))}
+   412→                            </div>
+   413→                          )}
+   414→                        </div>
+   415→                      );
+   416→                    })}
+   417→                  </div>
+   418→
+   419→                  {/* Totals footer */}
+   420→                  <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3">
+   421→                    <Metric label="Total" value={`${num(totals.total)}h`} />
+   422→                    <Metric label="Regular" value={`${num(totals.regular)}h`} />
+   423→                    <Metric label="Overtime" value={`${num(totals.overtime)}h`} tone={totals.overtime > 0 ? "text-amber-600" : "text-slate-800"} />
+   424→                    <Metric label="Billable" value={`${num(totals.billable)}h`} tone="text-emerald-600" />
+   425→                    <Metric label="Non-billable" value={`${num(totals.nonBillable)}h`} />
+   426→                    <Metric label="Entries" value={totals.count} />
+   427→                    <div className="flex-1 min-w-56">
+   428→                      <Input value={weekComments} onChange={(e) => setWeekComments(e.target.value)} placeholder="Week comments (optional)" className="h-9 bg-white" />
+   429→                    </div>
+   430→                    <div className="flex items-center gap-2">
+   431→                      <Button variant="outline" size="sm" disabled={saving} onClick={() => void saveDraft(false)}>
+   432→                        <Save className="h-3.5 w-3.5 mr-1.5" />Save as draft
+   433→                      </Button>
+   434→                      <Button size="sm" disabled={saving} onClick={() => void saveDraft(true)}>
+   435→                        <Send className="h-3.5 w-3.5 mr-1.5" />Submit for approval
+   436→                      </Button>
+   437→                      {mineForWeek?.status === "DRAFT" && (
+   438→                        <ConfirmButton onConfirm={() => void deleteDraft()} variant="destructive" title="Delete draft timesheet?" description="Entries for this week will be permanently removed.">
+   439→                          Delete draft
+   440→                        </ConfirmButton>
+   441→                      )}
+   442→                    </div>
+   443→                  </div>
+   444→                </>
+   445→              )}
+   446→            </>
+   447→          )}
+   448→        </SectionCard>
+   449→      )}
+   450→
+   451→      {/* APPROVALS */}
+   452→      {canApprove && (
+   453→        <SectionCard
+   454→          title="Approvals"
+   455→          description="Review submitted effort — approvals cascade into actual cost, EVM and health."
+   456→          actions={
+   457→            <div className="inline-flex rounded-md border border-slate-200 p-0.5 bg-white">
+   458→              {(["PENDING", "APPROVED"] as const).map((v) => (
+   459→                <button key={v} onClick={() => setApprovalView(v)}
+   460→                  className={`px-2.5 py-1 text-xs font-medium rounded ${approvalView === v ? "bg-blue-600 text-white" : "text-slate-500 hover:text-slate-700"}`}>
+   461→                  {v === "PENDING" ? `Pending (${pending.length})` : `Approved (${approved.length})`}
+   462→                </button>
+   463→              ))}
+   464→            </div>
+   465→          }
+   466→        >
+   467→          {approvalView === "PENDING" ? (
+   468→            pending.length === 0 ? <EmptyState title="Approval queue is clear" description="Submitted timesheets land here for review." /> : (
+   469→              <div className="space-y-2">
+   470→                {pending.map((t) => (
+   471→                  <div key={t.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5">
+   472→                    <div className="min-w-44 flex-1">
+   473→                      <p className="text-sm font-medium text-slate-800">{t.resource.name} <span className="text-xs text-slate-400">{t.resource.employeeCode} · {t.resource.department}</span></p>
+   474→                      <p className="text-xs text-slate-500">Week of {t.weekStart.slice(0, 10)} · submitted {t.submittedAt ? fmtDateTime(t.submittedAt) : "—"}</p>
+   475→                    </div>
+   476→                    <StatusChip status={t.status} />
+   477→                    <div className="flex items-center gap-4 text-xs text-slate-600 tabular-nums">
+   478→                      <span>{num(t.totalHours)}h total</span>
+   479→                      <span>{num(t.billableHours)}h billable</span>
+   480→                      <span>{t.entriesCount} entries</span>
+   481→                    </div>
+   482→                    <div className="flex items-center gap-2">
+   483→                      <Button variant="outline" size="sm" onClick={() => setDetailId(t.id)}>Review</Button>
+   484→                      <ConfirmButton onConfirm={() => void act(() => api.post(`/api/timesheets/${t.id}/approve`), `Approved ${t.resource.name}'s week`)} title="Approve timesheet?" description={`${t.resource.name} · week of ${t.weekStart.slice(0, 10)} · ${num(t.totalHours)}h. Actuals cascade into project cost and EVM.`}>
+   485→                        Approve
+   486→                      </ConfirmButton>
+   487→                      <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => { setRejectTarget(t); setRejectReason(""); }}>
+   488→                        Reject
+   489→                      </Button>
+   490→                    </div>
+   491→                  </div>
+   492→                ))}
+   493→              </div>
+   494→            )
+   495→          ) : approved.length === 0 ? <EmptyState title="Nothing awaiting lock" description="Approved timesheets can be locked to freeze the period." /> : (
+   496→            <div className="space-y-2">
+   497→              {approved.map((t) => (
+   498→                <div key={t.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5">
+   499→                  <div className="min-w-44 flex-1">
+   500→                    <p className="text-sm font-medium text-slate-800">{t.resource.name}</p>
+   501→                    <p className="text-xs text-slate-500">Week of {t.weekStart.slice(0, 10)} · approved {t.approvedAt ? fmtDateTime(t.approvedAt) : "—"}{t.approverName ? ` by ${t.approverName}` : ""}</p>
+   502→                  </div>
+   503→                  <StatusChip status={t.status} />
+   504→                  <span className="text-xs text-slate-600 tabular-nums">{num(t.totalHours)}h · {t.entriesCount} entries</span>
+   505→                  <div className="flex items-center gap-2">
+   506→                    <Button variant="outline" size="sm" onClick={() => setDetailId(t.id)}>Review</Button>
+   507→                    <ConfirmButton onConfirm={() => void act(() => api.post(`/api/timesheets/${t.id}/lock`), "Timesheet locked — period frozen")}
+   508→                      title="Lock timesheet?" description="Locked periods are immutable and cannot be edited or re-approved." variant="outline">
+   509→                      <span className="inline-flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" />Lock</span>
+   510→                    </ConfirmButton>
+   511→                  </div>
+   512→                </div>
+   513→              ))}
+   514→            </div>
+   515→          )}
+   516→        </SectionCard>
+   517→      )}
+   518→
+   519→      {/* REGISTER */}
+   520→      <SectionCard title="Timesheet register" description={`${list.data?.total ?? 0} timesheets in your visibility scope`}>
+   521→        <Toolbar className="mb-3">
+   522→          {STATUS_TABS.map((s) => (
+   523→            <button key={s}
+   524→              onClick={() => setStatusTab(s)}
+   525→              className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${statusTab === s ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"}`}>
+   526→              {s === "ALL" ? "All" : s.replace("_", " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}
+   527→              {s !== "ALL" && counts[s] !== undefined && <span className="ml-1 opacity-70 tabular-nums">{counts[s]}</span>}
+   528→            </button>
+   529→          ))}
+   530→        </Toolbar>
+   531→        {registerRows.length === 0 ? <EmptyState title="No timesheets match" description="Adjust the status filter or pick another week." /> : (
+   532→          <div className="rounded-lg border border-slate-200 overflow-auto max-h-96">
+   533→            <table className="w-full text-sm">
+   534→              <thead className="sticky top-0 z-[1]">
+   535→                <tr className="bg-slate-50 border-b border-slate-200">
+   536→                  {["Resource", "Week", "Status", "Total", "Regular", "Overtime", "Billable", "Entries", "Approver", ""].map((h) => (
+   537→                    <th key={h} className="text-left font-medium text-slate-500 px-3 py-2.5 whitespace-nowrap text-xs uppercase tracking-wide">{h}</th>
+   538→                  ))}
+   539→                </tr>
+   540→              </thead>
+   541→              <tbody>
+   542→                {registerRows.map((t) => (
+   543→                  <tr key={t.id} className="border-b border-slate-100 last:border-0 hover:bg-blue-50/40 cursor-pointer" onClick={() => setDetailId(t.id)}>
+   544→                    <td className="px-3 py-2.5">
+   545→                      <span className="font-medium text-slate-800">{t.resource.name}</span>
+   546→                      <span className="block text-xs text-slate-400">{t.resource.employeeCode}{t.isOwn ? " · you" : ""}</span>
+   547→                    </td>
+   548→                    <td className="px-3 py-2.5 text-slate-600 tabular-nums whitespace-nowrap">{t.weekStart.slice(0, 10)}</td>
+   549→                    <td className="px-3 py-2.5"><StatusChip status={t.status} /></td>
+   550→                    <td className="px-3 py-2.5 tabular-nums font-medium">{num(t.totalHours)}</td>
+   551→                    <td className="px-3 py-2.5 tabular-nums text-slate-500">{num(t.regularHours)}</td>
+   552→                    <td className="px-3 py-2.5 tabular-nums text-slate-500">{num(t.overtimeHours)}</td>
+   553→                    <td className="px-3 py-2.5 tabular-nums text-slate-500">{num(t.billableHours)}</td>
+   554→                    <td className="px-3 py-2.5 tabular-nums text-slate-500">{t.entriesCount}</td>
+   555→                    <td className="px-3 py-2.5 text-slate-500">{t.approverName || "—"}</td>
+   556→                    <td className="px-3 py-2.5 text-right"><ClipboardCheck className="h-4 w-4 text-slate-300" /></td>
+   557→                  </tr>
+   558→                ))}
+   559→              </tbody>
+   560→            </table>
+   561→          </div>
+   562→        )}
+   563→      </SectionCard>
+   564→
+   565→      {/* Reject dialog */}
+   566→      <Dialog open={Boolean(rejectTarget)} onOpenChange={(o) => { if (!o) setRejectTarget(null); }}>
+   567→        <DialogContent>
+   568→          <DialogHeader>
+   569→            <DialogTitle>Reject timesheet</DialogTitle>
+   570→            <DialogDescription>
+   571→              {rejectTarget ? `${rejectTarget.resource.name} · week of ${rejectTarget.weekStart.slice(0, 10)} · ${num(rejectTarget.totalHours)}h. The resource will be able to edit and resubmit.` : ""}
+   572→            </DialogDescription>
+   573→          </DialogHeader>
+   574→          <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Reason (required, shared with the resource)" rows={3} />
+   575→          <DialogFooter>
+   576→            <Button variant="outline" onClick={() => setRejectTarget(null)}>Cancel</Button>
+   577→            <Button variant="destructive" disabled={rejectReason.trim().length < 3} onClick={() => {
+   578→              const t = rejectTarget;
+   579→              setRejectTarget(null);
+   580→              if (t) void act(() => api.post(`/api/timesheets/${t.id}/reject`, { reason: rejectReason.trim() }), "Timesheet rejected");
+   581→            }}>Reject</Button>
+   582→          </DialogFooter>
+   583→        </DialogContent>
+   584→      </Dialog>
+   585→
+   586→      {/* Detail sheet */}
+   587→      <Sheet open={Boolean(detailId)} onOpenChange={(o) => { if (!o) setDetailId(null); }}>
+   588→        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+   589→          <SheetHeader>
+   590→            <SheetTitle>Timesheet detail</SheetTitle>
+   591→            <SheetDescription>Full week breakdown with entries and workflow state.</SheetDescription>
+   592→          </SheetHeader>
+   593→          {detail.loading && !detailTs ? <LoadingBlock /> : detail.error ? <ErrorBlock message={detail.error} onRetry={detail.refetch} /> : detailTs ? (
+   594→            <div className="px-4 pb-6 space-y-4">
+   595→              <ReadOnlyWeek ts={detailTs} projectLabels={projectLabels} taskLabels={taskLabels} actions={canApprove && (
+   596→                <div className="flex gap-2 mt-3">
+   597→                  {["SUBMITTED", "UNDER_REVIEW"].includes(detailTs.status) && (
+   598→                    <>
+   599→                      <ConfirmButton onConfirm={() => void act(() => api.post(`/api/timesheets/${detailTs.id}/approve`), "Approved")} title="Approve timesheet?">Approve</ConfirmButton>
+   600→                      <Button variant="outline" size="sm" className="text-red-600 border-red-200" onClick={() => { setRejectTarget(detailTs); }}>Reject</Button>
+   601→                    </>
+   602→                  )}
+   603→                  {detailTs.status === "APPROVED" && (
+   604→                    <ConfirmButton onConfirm={() => void act(() => api.post(`/api/timesheets/${detailTs.id}/lock`), "Locked")} title="Lock timesheet?" variant="outline">Lock</ConfirmButton>
+   605→                  )}
+   606→                </div>
+   607→              )} />
+   608→            </div>
+   609→          ) : null}
+   610→        </SheetContent>
+   611→      </Sheet>
+   612→    </div>
+   613→  );
+   614→}
+   615→
+   616→// ---- Read-only week renderer (submitted/approved/locked + detail sheet) ----
+   617→function ReadOnlyWeek({ ts, projectLabels, taskLabels, actions }: {
+   618→  ts: TSListItem & { entries: TSEntry[] };
+   619→  projectLabels: Record<string, string>;
+   620→  taskLabels: Record<string, string>;
+   621→  actions?: ReactNode;
+   622→}) {
+   623→  return (
+   624→    <div>
+   625→      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-3">
+   626→        <Metric label="Resource" value={ts.resource.name} />
+   627→        <Metric label="Week" value={`${ts.weekStart.slice(0, 10)} → ${ts.weekEnd.slice(0, 10)}`} />
+   628→        <Metric label="Status" value={<StatusChip status={ts.status} />} />
+   629→        <Metric label="Total" value={`${num(ts.totalHours)}h`} />
+   630→        <Metric label="Overtime" value={`${num(ts.overtimeHours)}h`} />
+   631→        <Metric label="Billable" value={`${num(ts.billableHours)}h`} />
+   632→        {ts.comments && <Metric label="Comments" value={<span className="text-xs font-normal">{ts.comments}</span>} />}
+   633→      </div>
+   634→      {ts.rejectionReason && (
+   635→        <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">Rejected: {ts.rejectionReason}</div>
+   636→      )}
+   637→      {ts.entries.length === 0 ? <EmptyState title="No entries recorded" /> : (
+   638→        <div className="rounded-lg border border-slate-200 overflow-auto max-h-80">
+   639→          <table className="w-full text-sm">
+   640→            <thead className="sticky top-0 z-[1]">
+   641→              <tr className="bg-slate-50 border-b border-slate-200">
+   642→                {["Day", "Project", "Task", "Activity", "Time", "Hours", "Billable", "Note"].map((h) => (
+   643→                  <th key={h} className="text-left font-medium text-slate-500 px-3 py-2 whitespace-nowrap text-xs uppercase tracking-wide">{h}</th>
+   644→                ))}
+   645→              </tr>
+   646→            </thead>
+   647→            <tbody>
+   648→              {[...ts.entries].sort((a, b) => a.entryDate.localeCompare(b.entryDate)).map((e) => (
+   649→                <tr key={e.id} className="border-b border-slate-100 last:border-0">
+   650→                  <td className="px-3 py-2 whitespace-nowrap text-slate-600">{new Date(e.entryDate).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" })} {e.entryDate.slice(5, 10)}</td>
+   651→                  <td className="px-3 py-2 font-medium text-slate-700">{e.projectId ? projectLabels[e.projectId] || "Project" : "—"}</td>
+   652→                  <td className="px-3 py-2 text-slate-500">{e.taskId ? taskLabels[e.taskId] || "Task" : "—"}</td>
+   653→                  <td className="px-3 py-2 text-slate-600">{e.activity || "—"}</td>
+   654→                  <td className="px-3 py-2 text-slate-500 tabular-nums whitespace-nowrap">{e.startTime && e.endTime ? `${e.startTime}–${e.endTime}${e.breakMinutes ? ` (-${e.breakMinutes}m)` : ""}` : "—"}</td>
+   655→                  <td className="px-3 py-2 tabular-nums font-medium">{num(e.hours)}</td>
+   656→                  <td className="px-3 py-2">{e.billable ? <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200" variant="outline">Yes</Badge> : <Badge variant="outline" className="border-slate-200 text-slate-400">No</Badge>}</td>
+   657→                  <td className="px-3 py-2 text-slate-500 max-w-40 truncate">{e.comments || "—"}</td>
+   658→                </tr>
+   659→              ))}
+   660→            </tbody>
+   661→          </table>
+   662→        </div>
+   663→      )}
+   664→      {actions}
+   665→      <p className="text-xs text-slate-400 mt-3">Submitted {fmtDateTime(ts.submittedAt)}{ts.approvedAt ? ` · approved ${fmtDateTime(ts.approvedAt)}` : ""}{ts.lockedAt ? ` · locked ${fmtDateTime(ts.lockedAt)}` : ""}</p>
+   666→    </div>
+   667→  );
+   668→}
+   669→

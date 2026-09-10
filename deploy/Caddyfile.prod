@@ -1,0 +1,27 @@
+# ==============================================================
+# PM CONTROL TOWER — Production Caddy edge (docker compose "tls" profile)
+# With a public TLS_DOMAIN Caddy obtains certificates automatically.
+# For mounted certificates place fullchain.pem/privkey.pem in ./deploy/tls
+# and keep the tls line; otherwise remove it.
+# ==============================================================
+{$TLS_DOMAIN} {
+	# Socket.IO realtime gateway
+	handle /socket.io/* {
+		reverse_proxy realtime:3003
+	}
+
+	# Application + API
+	handle {
+		reverse_proxy app:3000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# Mounted certificates (delete this line for automatic HTTPS)
+	tls /etc/caddy/tls/fullchain.pem /etc/caddy/tls/privkey.pem
+
+	encode gzip
+	request_body {
+		max_size 25MB
+	}
+}
