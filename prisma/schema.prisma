@@ -1357,6 +1357,8 @@ model TaskEstimate {
 
 model SimulationRun {
   id          String   @id @default(cuid())
+  status      String   @default("COMPLETE") // QUEUED | RUNNING | COMPLETE | FAILED (async worker)
+  error       String?
   projectId   String
   seed        Int
   iterations  Int
@@ -1464,4 +1466,13 @@ model BenefitReview {
   profile BenefitProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@index([profileId])
+}
+
+model SystemConfig {
+  id                   String   @id @default("singleton")
+  freshnessWarn        Float    @default(1.0)
+  freshnessDegrade     Float    @default(1.5)
+  freshnessCritical    Float    @default(2.5)
+  freshnessGraceHours  Int      @default(24)
+  updatedAt            DateTime @updatedAt
 }

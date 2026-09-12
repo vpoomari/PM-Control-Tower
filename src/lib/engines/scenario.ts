@@ -75,3 +75,40 @@ export function computeScenarioDiff(base: ScenarioSnapshot, simulated: ScenarioS
     affectedTasks: affected, applied,
   };
 }
+
+// ---- Rebase on current actuals ----
+// Live data may drift between branch creation and merge. Instead of failing or
+// blindly overwriting, duration overrides are REBASED: the override's DELTA
+// relative to the branch snapshot is applied to the CURRENT duration. Assignment
+// removals that already happened in production are skipped. The merge response
+// reports every rebase/skip decision.
+
+export interface RebaseDecision { taskId?: string; kind: string; note: string }
+
+export function rebaseOverrides(
+  snapshot: ScenarioSnapshot,
+  overrides: ScenarioOverrides,
+  current: { tasks: ScenarioTask[]; assignmentIds: Set<string> }
+): { rebased: ScenarioOverrides; decisions: RebaseDecision[] } {
+  const decisions: RebaseDecision[] = [];
+  const durationChanges: Record<string, number> = {};
+  if (overrides.durationChanges) {
+    for (const [taskId, overrideDays] of Object.entries(overrides.durationChanges)) {
+      const snap = snapshot.tasks.find((t) => t.id === taskId);
+      const cur = current.tasks.find((t) => t.id === taskId);
+      if (!cur) { decisions.push({ taskId, kind: "SKIPPED", note: "task no longer exists in production" }); continue; }
+      const snapDays = snap?.durationDays ?? cur.durationDays;
+      if (cur.durationDays === snapDays) { durationChanges[taskId] = overrideDays; decisions.push({ taskId, kind: "APPLIED", note: "no drift" }); continue; }
+      const delta = overrideDays - snapDays;
+      const rebased = Math.max(0.5, Math.round((cur.durationDays + delta) * 10) / 10);
+      durationChanges[taskId] = rebased;
+      decisions.push({ taskId, kind: "REBASED", note: "branch base " + snapDays + "d -> current " + cur.durationDays + "d; delta applied -> " + rebased + "d" });
+    }
+  }
+  let removeAssignments = overrides.removeAssignments?.filter((aid) => {
+    const exists = current.assignmentIds.has(aid);
+    if (!exists) decisions.push({ kind: "SKIPPED", note: "assignment already removed in production" });
+    return exists;
+  });
+  return { rebased: { ...overrides, durationChanges, removeAssignments }, decisions };
+}

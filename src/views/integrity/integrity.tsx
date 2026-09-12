@@ -3,36 +3,42 @@
 // Freshness (honest staleness) · Evidence bundles · P80 simulations · Calibration ·
 // Scenario sandbox · AI actions (draft-first) · Benefits realization.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { api, useApi } from "@/lib/client";
+import { api, useApi, useRealtimeRefetch } from "@/lib/client";
 import { useMe } from "@/views/execute/shared/pickers";
 import { hasPerm } from "@/views/execute/shared/pickers";
 import { money, num } from "@/lib/constants";
 import {
-  PageHeader, SectionCard, StatCard, StatusChip, LoadingBlock, ErrorBlock, EmptyState, Button, Badge, Input, Label, cn,
+  PageHeader, SectionCard, StatCard, StatusChip, LoadingBlock, ErrorBlock, EmptyState, Button, Badge, Input, cn,
 } from "@/components/pmct/kit";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RefreshCw, FileCheck2, Target, Gauge, GitBranch, Sparkles, Trophy, ShieldCheck, Trash2, CheckCircle2, XCircle } from "lucide-react";
+import { ExternalLink } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, Tooltip as ChartTooltip, ResponsiveContainer, BarChart, Bar, Cell as BarCell } from "recharts";
 
 interface ProjectLite { id: string; code: string; name: string; ragStatus: string; healthScore: number }
 interface FreshnessRow { project: ProjectLite; score: number; level: string; worstFeed: string; feeds: { feed: string; ageDays: number; staleness: number; level: string }[] }
 interface Bundle { id: string; projectId: string; createdByName: string; docCount: number; manifestHash: string; status: string; verifiedAt: string | null; createdAt: string; project: { code: string; name: string } }
-interface SimRun { id: string; seed: number; iterations: number; stale: boolean; createdAt: string }
+interface SimRun { id: string; seed: number; iterations: number; stale: boolean; createdAt: string; status: string; error?: string | null; result: SimResult | null }
 interface SimResult {
   runId: string; seed: number; iterations: number; prng: string; deterministicFinishDay: number;
   finish: { p10: number; p50: number; p80: number; p90: number };
   cost: { p50: number; p80: number }; criticality: Record<string, number>;
   milestones: Record<string, { name: string; p50: number; p80: number }>;
   projectName: string; projectCode: string;
+  projectStart?: string;
 }
 interface CalFactor { id: string; scopeType: string; label: string; factor: number; sampleSize: number; mad: number; confident: boolean }
 interface ScenarioRow { id: string; name: string; projectId: string; status: string; createdByName: string; createdAt: string; changeRequestId: string | null; project: { code: string; name: string } }
 interface AiActionRow { id: string; type: string; title: string; status: string; trigger: string | null; humanReviewer: string | null; createdAt: string; contentJson: string; project: { code: string; name: string } | null }
 interface BenefitProfileRow { id: string; name: string; type: string; baselineValue: number; targetValue: number; active: boolean; owner: string; actuals: { value: number; period: string }[] }
-interface BenefitProjectRow { project: ProjectLite; profiles: BenefitProfileRow[]; rollup: { promised: number; delivered: number; realizationPct: number; atRiskProfiles: string[] }; strategic: { rag: string; note: string } }
+interface BenefitProjectRow { project: ProjectLite; profiles: BenefitProfileRow[]; rollup: { promised: number; delivered: number; realizationPct: number; atRiskProfiles: string[]; activeProfiles: number }; strategic: { rag: string; note: string } }
 interface ScenarioDiff { baseFinishDay: number; simulatedFinishDay: number; finishDeltaDays: number; budgetDelta: number; applied: string[]; affectedTasks: string[] }
 
+const HATCH = { backgroundImage: "repeating-linear-gradient(45deg, rgba(15,23,42,0.07) 0 6px, transparent 6px 12px)" };
+const dayToDate = (startISO: string, day: number) => new Date(new Date(startISO).getTime() + day * 86_400_000).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const LEVEL_TONE: Record<string, string> = { CURRENT: "bg-emerald-50 text-emerald-700 border-emerald-200", WARN: "bg-amber-50 text-amber-700 border-amber-200", DEGRADE: "bg-orange-50 text-orange-700 border-orange-200", CRITICAL: "bg-red-50 text-red-700 border-red-200" };
 const TABS = ["Freshness", "Evidence", "Simulations", "Calibration", "Scenarios", "AI Actions", "Benefits"] as const;
 
@@ -61,14 +67,27 @@ export default function IntegrityView() {
   const activeScenario = useMemo(() => scenarios.data?.scenarios.find((s) => s.status === "SANDBOX") ?? null, [scenarios.data]);
   const effProjectId = projectId || projectList[0]?.id || "";
 
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const run = async () => {
     if (!effProjectId) return;
     setBusy(true);
     try {
-      const res = await api.post<SimResult>("/api/integrity/simulate", { projectId: effProjectId, iterations: 1000 });
-      setSim(res); toast.success(`Simulation complete — P50 day ${res.finish.p50}, P80 day ${res.finish.p80}`);
-      runs.refetch();
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Simulation failed"); } finally { setBusy(false); }
+      const res = await api.post<{ runId: string; status: string }>("/api/integrity/simulate", { projectId: effProjectId, iterations: 1000 });
+      toast.success("Simulation queued — the async worker will complete it shortly");
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = setInterval(async () => {
+        const r = await api.get<{ runs: SimRun[] }>(`/api/integrity/simulate?projectId=${effProjectId}`);
+        runs.refetch();
+        const done = r.runs.find((x) => x.id === res.runId);
+        if (done && done.status === "COMPLETE" && done.result) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setBusy(false);
+          setSim({ runId: done.id, seed: done.result.seed ?? done.seed, iterations: done.result.iterations ?? done.iterations, prng: done.result.prng ?? "mulberry32", deterministicFinishDay: done.result.deterministicFinishDay, finish: done.result.finish, cost: done.result.cost, criticality: done.result.criticality ?? {}, milestones: done.result.milestones ?? {}, projectName: "", projectCode: "", projectStart: done.result.projectStart });
+          toast.success(`Simulation complete — P50 ${done.result.finish.p50}, P80 ${done.result.finish.p80}`);
+        }
+        if (done && done.status === "FAILED") { if (pollRef.current) clearInterval(pollRef.current); setBusy(false); toast.error("Simulation failed: " + (done.result as unknown as string) ); }
+      }, 2000);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Queueing failed"); setBusy(false); }
   };
   const exportBundle = async () => {
     if (!effProjectId) return;
@@ -134,6 +153,15 @@ export default function IntegrityView() {
       const r = await api.post<{ title: string; needsRePlan: boolean }>("/api/integrity/ai-actions", { projectId: effProjectId, type: "STEERING_PACK" });
       toast.success(`${r.title} drafted${r.needsRePlan ? " — re-plan proposal included (SPI < 0.9 ×3)" : ""}`); aiActions.refetch();
     } catch (e) { toast.error(e instanceof Error ? e.message : "Draft failed"); } finally { setBusy(false); }
+  };
+  const [approvalLink, setApprovalLink] = useState<{ url: string; expiresAt: string; title: string } | null>(null);
+  const createApprovalLink = async () => {
+    if (!effProjectId) return;
+    setBusy(true);
+    try {
+      const res = await api.post<{ url: string; expiresAt: string; title: string }>("/api/integrity/approvals", { projectId: effProjectId });
+      setApprovalLink(res); toast.success("Signed link created — decision via the link is audited");
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Link failed"); } finally { setBusy(false); }
   };
   const decide = async (id: string, status: "APPROVED" | "REJECTED") => {
     try { await api.patch("/api/integrity/ai-actions", { id, status }); toast.success(`Human decision recorded: ${status}`); aiActions.refetch(); }
@@ -230,11 +258,34 @@ export default function IntegrityView() {
           {sim ? (
             <SectionCard title={`P80 probabilistic forecast — ${sim.projectCode}`} description={`seed ${sim.seed} · ${sim.iterations} iterations · PRNG ${sim.prng} (reproducible)`}>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-                <StatCard label="Deterministic finish" value={`day ${sim.deterministicFinishDay}`} sub="assumes everything goes to plan" />
-                <StatCard label="P50 finish" value={`day ${sim.finish.p50}`} tone="good" />
-                <StatCard label="P80 finish" value={`day ${sim.finish.p80}`} tone="warn" sub="plan for this date" />
+                <StatCard label="Deterministic finish" value={sim.projectStart ? dayToDate(sim.projectStart, sim.deterministicFinishDay) : `day ${sim.deterministicFinishDay}`} sub="assumes everything goes to plan" />
+                <StatCard label="P50 finish" value={sim.projectStart ? dayToDate(sim.projectStart, sim.finish.p50) : `day ${sim.finish.p50}`} sub="P50" tone="good" />
+                <StatCard label="P80 finish" value={sim.projectStart ? dayToDate(sim.projectStart, sim.finish.p80) : `day ${sim.finish.p80}`} tone="warn" sub="plan for this date" />
                 <StatCard label="P10 – P90 spread" value={`${sim.finish.p10} – ${sim.finish.p90}`} />
               </div>
+              {(() => {
+                const fan = [
+                  { name: "P10", p10: sim.finish.p10, band: 0, p50: sim.finish.p10 },
+                  { name: "P50", p10: sim.finish.p10, band: sim.finish.p80 - sim.finish.p10, p50: sim.finish.p50 },
+                  { name: "P80", p10: sim.finish.p10, band: sim.finish.p80 - sim.finish.p10, p50: sim.finish.p50 },
+                  { name: "P90", p10: sim.finish.p10, band: sim.finish.p90 - sim.finish.p10, p50: sim.finish.p50 },
+                ];
+                return (
+                  <div className="rounded-lg border border-slate-200 p-3 mb-3">
+                    <p className="font-semibold text-slate-700 text-sm mb-1">Confidence band (P10–P90 envelope, P50 line)</p>
+                    <ResponsiveContainer width="100%" height={140}>
+                      <AreaChart data={fan} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                        <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                        <ChartTooltip formatter={(val: number | string) => String(val)} />
+                        <Area dataKey="p10" stackId="band" stroke="none" fill="transparent" />
+                        <Area dataKey="band" stackId="band" stroke="none" fill="#1d4ed8" fillOpacity={0.15} />
+                        <Area type="monotone" dataKey="p50" stroke="#1d4ed8" fill="none" strokeWidth={2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                );
+              })()}
               <div className="grid sm:grid-cols-2 gap-3 text-sm">
                 <div className="rounded-lg border border-slate-200 p-3">
                   <p className="font-semibold text-slate-700 mb-1.5">Cost confidence</p>
@@ -345,7 +396,19 @@ export default function IntegrityView() {
 
       {/* AI ACTIONS */}
       {tab === "AI Actions" && (aiActions.loading && !aiActions.data ? <LoadingBlock /> : aiActions.error ? <ErrorBlock message={aiActions.error} onRetry={aiActions.refetch} /> : (
-        <SectionCard title="Agentic work products — drafted by AI, decided by humans" description="Every draft records its trigger; every decision records its reviewer. Nothing auto-executes.">
+        <SectionCard title="Agentic work products — drafted by AI, decided by humans" description="Every draft records its trigger; every decision records its reviewer. Nothing auto-executes."
+        actions={canManage && effProjectId && (
+          <Button variant="outline" size="sm" disabled={busy} onClick={() => void createApprovalLink()}>
+            <ExternalLink className="h-3.5 w-3.5 mr-1" />Create signed approval link
+          </Button>
+        )}>
+        {approvalLink && (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+            <p className="font-medium text-amber-800">Signed approval link (HMAC-SHA256, expiring) — status: CONFIGURED</p>
+            <p className="text-xs text-amber-700 break-all mt-1">{approvalLink.title} · expires {new Date(approvalLink.expiresAt).toLocaleString()}</p>
+            <a className="text-xs text-blue-700 underline break-all" href={approvalLink.url} target="_blank" rel="noreferrer">{approvalLink.url.slice(0, 72)}…</a>
+          </div>
+        )}
           {aiActions.data!.actions.length === 0 ? <EmptyState title="No drafts yet" description="Draft a steering pack to see the human-gated flow." /> : (
             <div className="space-y-2">
               {aiActions.data!.actions.map((a) => (
@@ -378,6 +441,25 @@ export default function IntegrityView() {
             <StatCard label="Value delivered" value={money(benefits.data!.totals.delivered)} tone="good" />
             <StatCard label="Realization" value={`${benefits.data!.totals.realizationPct}%`} tone={benefits.data!.totals.realizationPct < 50 ? "warn" : "good"} />
           </div>
+          {benefits.data!.totals.promised > 0 && (
+            <SectionCard title="Value waterfall — promised vs delivered vs remaining">
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={[
+                  { name: "Promised", base: 0, value: benefits.data!.totals.promised, fill: "#1d4ed8" },
+                  { name: "Delivered", base: 0, value: benefits.data!.totals.delivered, fill: "#0e9f6e" },
+                  { name: "Remaining", base: benefits.data!.totals.delivered, value: Math.max(0, benefits.data!.totals.promised - benefits.data!.totals.delivered), fill: "#f59e0b" },
+                ]} margin={{ top: 4, right: 8, bottom: 0, left: 8 }}>
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                  <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                  <ChartTooltip formatter={(val: number | string) => "$" + Number(val).toLocaleString()} />
+                  <Bar dataKey="base" stackId="w" fill="transparent" />
+                  <Bar dataKey="value" stackId="w" radius={[4, 4, 0, 0]}>
+                    {benefits.data && [[0, "#1d4ed8"], [1, "#0e9f6e"], [2, "#f59e0b"]].map(([i, c]) => <BarCell key={i} fill={c as string} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </SectionCard>
+          )}
           {benefits.data!.projects.length === 0 ? <EmptyState title="No benefits profiled yet" description="Profile benefits on a project, then pass its final gate to activate value tracking." /> : benefits.data!.projects.map((row) => (
             <SectionCard key={row.project.id} title={`${row.project.code} — ${row.project.name}`}
               description={`delivery health ${row.project.ragStatus} · ${row.rollup.activeProfiles} active benefit profile(s)`}

@@ -5,14 +5,14 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { withApi, ok, ApiError, parseBody } from "@/lib/api";
-import { runAndStoreSimulation } from "@/lib/services/integrity";
+import { enqueueSimulation } from "@/lib/services/simqueue";
 import { writeAudit } from "@/lib/audit";
 
 export const GET = withApi(async (ctx) => {
   const projectId = ctx.searchParams.get("projectId");
   if (!projectId) throw new ApiError(400, "projectId required");
   const runs = await db.simulationRun.findMany({ where: { projectId }, orderBy: { createdAt: "desc" }, take: 10 });
-  return ok({ runs });
+  return ok({ runs: runs.map((r) => ({ ...r, result: r.status === "COMPLETE" && r.resultsJson && r.resultsJson !== "{}" ? JSON.parse(r.resultsJson) : null })) });
 }, { permission: "integrity.view", rateLimit: { limit: 240, windowMs: 60_000 } });
 
 export const POST = withApi(async (ctx) => {
@@ -22,12 +22,8 @@ export const POST = withApi(async (ctx) => {
     seed: z.number().int().optional(),
     iterations: z.number().int().min(200).max(10_000).optional(),
   }));
-  const { run, result, projectName, projectCode } = await runAndStoreSimulation(body.projectId, { seed: body.seed, iterations: body.iterations });
-  await writeAudit({ userId: session.id, userName: session.name, action: "CREATE", entityType: "SimulationRun", entityId: run.id, entityName: `Monte Carlo — ${projectCode}`, after: { seed: result.seed, iterations: result.iterations, p80: result.finish.p80 } });
-  return ok({
-    runId: run.id, seed: result.seed, iterations: result.iterations, prng: result.prng,
-    deterministicFinishDay: result.deterministicFinishDay,
-    finish: result.finish, cost: result.cost, milestones: result.milestones,
-    criticality: result.criticality, projectName, projectCode,
-  }, 201);
+  // Async by default: enqueue and return immediately; the worker never blocks the API thread.
+  const { runId } = await enqueueSimulation(body.projectId, { seed: body.seed, iterations: body.iterations });
+  await writeAudit({ userId: session.id, userName: session.name, action: "CREATE", entityType: "SimulationRun", entityId: runId, entityName: "Monte Carlo (queued)", after: { iterations: body.iterations ?? 1000 } });
+  return ok({ runId, status: "QUEUED" }, 202);
 }, { permission: "integrity.manage", rateLimit: { limit: 20, windowMs: 60_000 } });

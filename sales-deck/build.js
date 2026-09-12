@@ -108,12 +108,12 @@ s = p.addSlide(); s.background = { color: BG };
 kicker(s, 'The Integrity Layer — v1.1');
 slideTitle(s, 'Eight firsts, one operational model');
 const integ = [
-  ['Freshness Engine', 'The dashboard tells you when it is lying — DATA AS OF chips, degrading tiles', GREEN],
-  ['Evidence Bundles', 'SHA-256 tamper-evident chain; verification pinpoints altered records', BLUE],
-  ['P80 Forecasting', 'Seeded Monte Carlo over the real CPM engine — honest date ranges', BLUE],
+  ['Freshness Engine', 'The dashboard tells you when it is lying — DATA AS OF chips, hatched stale tiles', GREEN],
+  ['Evidence Bundles', 'SHA-256 tamper-evident chain; ZIP export; verification pinpoints altered records', BLUE],
+  ['P80 Forecasting', 'Seeded Monte Carlo on an async worker — honest P50–P80 date ranges', BLUE],
   ['Say/Do Calibration', 'The organization remembers its estimation bias — advisory only', BLUE],
-  ['Scenario Sandbox', 'Test decisions on a clone; merge as a governed Change Request', AMBER],
-  ['AI Steering Pack', 'AI drafts, humans approve, audit captures both — never auto-executes', AMBER],
+  ['Scenario Sandbox', 'Test decisions on a clone; drift-aware rebase merge as a Change Request', AMBER],
+  ['AI Steering Pack', 'AI drafts, humans approve via signed expiring links — never auto-executes', AMBER],
   ['Benefits Realization', 'Value promised vs delivered after go-live — strategic RAG overlay', GREEN],
   ['Full Traceability', 'Every mutation audited; every stochastic result reproducible', GREEN],
 ];

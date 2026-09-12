@@ -9,7 +9,18 @@ import { buildChain, verifyChain, EvidenceDoc } from "@/lib/engines/evidence";
 import { runSimulation } from "@/lib/engines/montecarlo";
 import { computeFactors } from "@/lib/engines/calibration";
 import { rollupBenefits } from "@/lib/engines/benefits";
-import { applyOverrides, computeScenarioDiff, deepClone, ScenarioOverrides, ScenarioSnapshot } from "@/lib/engines/scenario";
+import { applyOverrides, computeScenarioDiff, deepClone, rebaseOverrides, ScenarioOverrides, ScenarioSnapshot } from "@/lib/engines/scenario";
+
+export async function getFreshnessConfig() {
+  let cfg = await db.systemConfig.findUnique({ where: { id: "singleton" } });
+  if (!cfg) cfg = await db.systemConfig.create({ data: { id: "singleton" } });
+  return cfg;
+}
+
+export async function updateFreshnessConfig(data: { freshnessWarn?: number; freshnessDegrade?: number; freshnessCritical?: number; freshnessGraceHours?: number }) {
+  await getFreshnessConfig();
+  return db.systemConfig.update({ where: { id: "singleton" }, data });
+}
 
 const DEFAULT_CADENCES: Record<string, number> = { timesheets: 7, ledger: 7, tasks: 3, raid: 14, gates: 30 };
 
@@ -42,7 +53,8 @@ export async function computeProjectFreshness(projectId: string): Promise<(Fresh
   const cadence = (feed: string) => existing.find((m) => m.feed === feed)?.expectedCadenceDays ?? DEFAULT_CADENCES[feed] ?? 7;
   const updates = await feedLastUpdates(projectId);
   const feeds = Object.entries(updates).map(([feed, lastUpdate]) => ({ feed, lastUpdate, expectedCadenceDays: cadence(feed) }));
-  const result = computeFreshness(feeds);
+  const cfg = await getFreshnessConfig();
+  const result = computeFreshness(feeds, new Date(), { thresholds: { warn: cfg.freshnessWarn, degrade: cfg.freshnessDegrade, critical: cfg.freshnessCritical }, graceHours: cfg.freshnessGraceHours });
   // Persist cadence + lastUpdate snapshot (config lives here; computation is always live)
   for (const f of feeds) {
     await db.freshnessMetric.upsert({
@@ -159,7 +171,7 @@ export async function recomputeCalibration() {
 }
 
 // ---------- Simulation ----------
-export async function runAndStoreSimulation(projectId: string, opts: { seed?: number; iterations?: number }) {
+export async function computeSimulationData(projectId: string, opts: { seed?: number; iterations?: number }) {
   const [project, tasks, deps, estimates, milestones] = await Promise.all([
     db.project.findUnique({ where: { id: projectId }, select: { id: true, code: true, name: true, statusDate: true, createdAt: true, baselineBudget: true, currentBudget: true } }),
     db.task.findMany({ where: { projectId }, select: { id: true, name: true, durationDays: true, isSummary: true, estimate: true } }),
@@ -177,12 +189,17 @@ export async function runAndStoreSimulation(projectId: string, opts: { seed?: nu
   const durationDays = mcTasks.filter((t) => !t.isSummary).reduce((s, t) => s + t.durationDays, 0) || 1;
   const dailyCost = budget > 0 ? budget / Math.max(durationDays, 1) : 0;
   const result = runSimulation({ tasks: mcTasks, deps: deps as never, baseCost: budget, dailyCost, milestones: milestones.map((m) => ({ id: m.id, name: m.name, taskId: null })) }, { seed: opts.seed, iterations: opts.iterations });
+  return { result, projectName: project.name, projectCode: project.code, projectStart: (project.statusDate ?? project.createdAt)?.toISOString() ?? new Date().toISOString(), budget };
+}
+
+export async function runAndStoreSimulation(projectId: string, opts: { seed?: number; iterations?: number }) {
   await db.simulationRun.updateMany({ where: { projectId, stale: false }, data: { stale: true } });
+  const { result, projectName, projectCode, projectStart, budget } = await computeSimulationData(projectId, opts);
   const run = await db.simulationRun.create({
-    data: { projectId, seed: result.seed, iterations: result.iterations, resultsJson: JSON.stringify(result) },
+    data: { projectId, seed: result.seed, iterations: result.iterations, resultsJson: JSON.stringify({ ...result, projectStart, budget }), status: "COMPLETE" },
   });
   emitRealtime("simulation:completed", { projectId, runId: run.id, finish: result.finish }, `project:${projectId}`);
-  return { run, result, projectName: project.name, projectCode: project.code };
+  return { run, result: { ...result, projectStart, budget }, projectName, projectCode };
 }
 
 // ---------- Scenario ----------
@@ -213,9 +230,19 @@ export async function mergeScenario(scenarioId: string, session: { id: string; n
   const scenario = await db.scenario.findUnique({ where: { id: scenarioId } });
   if (!scenario) throw new Error("Scenario not found");
   if (scenario.status !== "SANDBOX") throw new Error("Scenario already resolved");
-  const overrides: ScenarioOverrides = JSON.parse(scenario.overridesJson);
+  const rawOverrides: ScenarioOverrides = JSON.parse(scenario.overridesJson);
   const snapshot: ScenarioSnapshot = JSON.parse(scenario.snapshotJson);
+  // Rebase on current actuals: production may have drifted since the branch.
+  const [currentTasks, currentAssignments] = await Promise.all([
+    db.task.findMany({ where: { projectId: scenario.projectId }, select: { id: true, durationDays: true } }),
+    db.assignment.findMany({ where: { projectId: scenario.projectId }, select: { id: true } }),
+  ]);
+  const { rebased: overrides, decisions: rebaseDecisions } = rebaseOverrides(
+    snapshot, rawOverrides,
+    { tasks: currentTasks.map((t) => ({ id: t.id, name: t.id, durationDays: t.durationDays, isSummary: false })), assignmentIds: new Set(currentAssignments.map((a) => a.id)) },
+  );
   const { diff } = simulateScenario(snapshot, overrides);
+  const rebaseNotes = rebaseDecisions.filter((d) => d.kind !== "APPLIED").map((d) => d.kind + ": " + d.note);
 
   const crCount = await db.changeRequest.count({ where: { projectId: scenario.projectId } });
   const result = await db.$transaction(async (tx) => {
@@ -238,13 +265,13 @@ export async function mergeScenario(scenarioId: string, session: { id: string; n
         projectId: scenario.projectId,
         code: `CR-SCN-${String(crCount + 1).padStart(3, "0")}`,
         title: `Scenario merge — ${scenario.name}`,
-        description: `Merged from scenario sandbox. Applied: ${diff.applied.join("; ") || "no overrides"}. Schedule impact ${diff.finishDeltaDays >= 0 ? "+" : ""}${diff.finishDeltaDays}d, budget impact ${diff.budgetDelta}.`,
+        description: `Merged from scenario sandbox. Applied: ${diff.applied.join("; ") || "no overrides"}. Schedule impact ${diff.finishDeltaDays >= 0 ? "+" : ""}${diff.finishDeltaDays}d, budget impact ${diff.budgetDelta}. Rebase: ${rebaseNotes.join("; ") || "clean (no drift)"}.`,
         reason: "SCENARIO_MERGE", category: "SCOPE", requesterId: session.id, requesterName: session.name,
         scheduleImpactDays: diff.finishDeltaDays, impactCost: diff.budgetDelta, status: "APPROVED",
         decidedBy: session.name,
       },
     });
-    const updated = await tx.scenario.update({ where: { id: scenarioId }, data: { status: "MERGED", mergedAt: new Date(), diffJson: JSON.stringify(diff), changeRequestId: cr.id } });
+    const updated = await tx.scenario.update({ where: { id: scenarioId }, data: { status: "MERGED", mergedAt: new Date(), diffJson: JSON.stringify({ ...diff, rebaseDecisions }), changeRequestId: cr.id } });
     return { cr, scenario: updated };
   });
   emitRealtime("scenario:merged", { scenarioId, projectId: scenario.projectId, crId: result.cr.id }, `project:${scenario.projectId}`);
@@ -269,4 +296,58 @@ export async function portfolioBenefitsRollup() {
     out.push({ project: p, ...r });
   }
   return out;
+}
+
+// ---------- Evidence ZIP export (human-readable index + manifest + docs) ----------
+import { buildZip } from "@/lib/engines/zip";
+
+async function collectEvidenceDocs(projectId: string): Promise<EvidenceDoc[]> {
+  const [project, baselines, crs, gates, timesheets, entries, health, audits] = await Promise.all([
+    db.project.findUnique({ where: { id: projectId }, select: { id: true, code: true, name: true, status: true, baselineBudget: true, currentBudget: true, actualCost: true, healthScore: true, ragStatus: true } }),
+    db.baseline.findMany({ where: { projectId }, orderBy: { createdAt: "asc" } }),
+    db.changeRequest.findMany({ where: { projectId }, orderBy: { createdAt: "asc" } }),
+    db.stageGate.findMany({ where: { projectId }, orderBy: { sequence: "asc" } }),
+    db.timesheet.findMany({ where: { resource: { assignments: { some: { projectId } } } }, orderBy: { weekStart: "asc" } }),
+    db.timesheetEntry.findMany({ where: { task: { projectId } }, orderBy: { createdAt: "asc" }, take: 500 }),
+    db.projectHealthSnapshot.findMany({ where: { projectId }, orderBy: { capturedAt: "asc" } }),
+    db.auditEvent.findMany({ where: { entityType: { in: ["Project", "ChangeRequest", "StageGate", "Baseline", "Timesheet"] }, entityId: projectId }, orderBy: { createdAt: "asc" }, take: 300 }),
+  ]);
+  if (!project) throw new Error("Project not found");
+  return [
+    { ref: "project:" + project.id, kind: "PROJECT_RECORD", content: JSON.stringify(project) },
+    ...baselines.map((b) => ({ ref: "baseline:" + b.id, kind: "BASELINE", content: JSON.stringify(b) })),
+    ...crs.map((c) => ({ ref: "change:" + c.id, kind: "CHANGE_REQUEST", content: JSON.stringify(c) })),
+    ...gates.map((g) => ({ ref: "gate:" + g.id, kind: "GATE_DECISION", content: JSON.stringify(g) })),
+    ...timesheets.map((t) => ({ ref: "timesheet:" + t.id, kind: "TIMESHEET", content: JSON.stringify(t) })),
+    ...entries.map((e) => ({ ref: "entry:" + e.id, kind: "TIMESHEET_ENTRY", content: JSON.stringify(e) })),
+    ...health.map((h) => ({ ref: "health:" + h.id, kind: "HEALTH_SNAPSHOT", content: JSON.stringify(h) })),
+    ...audits.map((a) => ({ ref: "audit:" + a.id, kind: "AUDIT", content: JSON.stringify(a) })),
+  ];
+}
+
+export async function buildEvidenceZip(bundleId: string): Promise<{ zip: Uint8Array; projectCode: string }> {
+  const bundle = await db.evidenceBundle.findUnique({ where: { id: bundleId }, include: { project: { select: { code: true } } } });
+  if (!bundle) throw new Error("Bundle not found");
+  const manifest = JSON.parse(bundle.manifestJson);
+  const docs = await collectEvidenceDocs(bundle.projectId);
+  const lines = [
+    "PM CONTROL TOWER - EVIDENCE BUNDLE",
+    "==================================",
+    "Project:  " + bundle.project.code,
+    "Exported: " + bundle.createdAt.toISOString() + " by " + bundle.createdByName,
+    "Documents: " + bundle.docCount,
+    "Chain:    SHA-256 (each hash includes the previous hash)",
+    "Manifest: " + bundle.manifestHash,
+    "",
+    ...manifest.entries.map((e: { index: number; kind: string; ref: string }) => String(e.index + 1).padStart(3, " ") + ". [" + e.kind + "] " + e.ref),
+    "",
+    "Verify with: POST /api/integrity/evidence/" + bundle.id + "/verify",
+    "Any alteration to a stored record breaks the chain visibly.",
+  ];
+  const entries = [
+    { name: "INDEX.txt", content: lines.join("\n") },
+    { name: "manifest.json", content: JSON.stringify(manifest, null, 2) },
+    ...docs.map((d) => ({ name: "docs/" + d.ref.replace(/[^a-zA-Z0-9._-]/g, "_") + ".json", content: d.content })),
+  ];
+  return { zip: buildZip(entries), projectCode: bundle.project.code };
 }

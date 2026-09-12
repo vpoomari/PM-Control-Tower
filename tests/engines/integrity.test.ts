@@ -195,3 +195,51 @@ test("steering: pack composed from live inputs with honest labels", () => {
   assert.equal(pack.kpiTable.find((k) => k.label.startsWith("Data freshness"))!.value, "45/100 (DEGRADE)");
   assert.match(pack.generatedFrom, /human review/);
 });
+
+// ---------- v1.2.0 DELTAS ----------
+import { buildZip, crc32 } from "../../src/lib/engines/zip";
+import { rebaseOverrides } from "../../src/lib/engines/scenario";
+import { computeFreshness as cf2 } from "../../src/lib/engines/freshness";
+
+test("zip: crc32 known vector + archive structure", () => {
+  assert.equal(crc32(new TextEncoder().encode("123456789")), 0xcbf43926); // standard CRC-32 check vector
+  const zip = buildZip([{ name: "index.txt", content: "hello evidence" }, { name: "manifest.json", content: "{}" }]);
+  const bytes = zip;
+  assert.equal(bytes[0], 0x50); assert.equal(bytes[1], 0x4b); // PK signature
+  const tail = bytes.slice(bytes.length - 22);
+  assert.equal(tail[0], 0x50); assert.equal(tail[3], 0x06);   // end-of-central-directory
+});
+test("zip: round-trips through a unzipper-compatible layout (deterministic)", () => {
+  const a = buildZip([{ name: "a.txt", content: "same" }]);
+  const b = buildZip([{ name: "a.txt", content: "same" }]);
+  assert.deepEqual(Buffer.from(a).compare(Buffer.from(b)), 0);
+});
+test("freshness: grace window suppresses degradation for young feeds", () => {
+  const r = cf2([{ feed: "gates", lastUpdate: daysAgo(1), expectedCadenceDays: 7 }], now, { graceHours: 48 });
+  assert.equal(r.level, "CURRENT");
+  assert.equal(r.feeds[0].graceApplied, true);
+  // beyond the grace window the cadence math applies again
+  const r2 = cf2([{ feed: "gates", lastUpdate: daysAgo(3), expectedCadenceDays: 3 }], now, { graceHours: 48 });
+  assert.equal(r2.level, "WARN"); // 3d old, 3d cadence -> 1.0x = WARN once past the 48h grace
+});
+test("freshness: configurable thresholds are honored", () => {
+  const strict = { warn: 0.5, degrade: 0.8, critical: 1.2 };
+  const r = cf2([{ feed: "tasks", lastUpdate: daysAgo(2), expectedCadenceDays: 2 }], now, { thresholds: strict, graceHours: 0 });
+  assert.equal(r.level, "DEGRADE"); // 2/2 = 1.0x: CURRENT on defaults, DEGRADE under strict thresholds
+});
+test("scenario: rebase applies duration delta to drifted current", () => {
+  const current = {
+    tasks: snap.tasks.map((t) => (t.id === "B" ? { ...t, durationDays: 30 } : t)), // drifted 20 → 30 since branch
+    assignmentIds: new Set(snap.assignments.map((a) => a.id)),
+  };
+  const { rebased, decisions } = rebaseOverrides(snap, { durationChanges: { B: 45 }, removeAssignments: ["a1"] }, current);
+  assert.equal(rebased.durationChanges!["B"], 55); // delta +25 applied to current 30
+  assert.equal(rebased.removeAssignments!.length, 1);
+  assert.ok(decisions.some((d) => d.kind === "REBASED"));
+});
+test("scenario: rebase skips assignments already gone in production", () => {
+  const current = { tasks: snap.tasks, assignmentIds: new Set<string>() };
+  const { rebased, decisions } = rebaseOverrides(snap, { removeAssignments: ["a1"] }, current);
+  assert.equal(rebased.removeAssignments!.length, 0);
+  assert.ok(decisions.some((d) => d.kind === "SKIPPED"));
+});
