@@ -69,7 +69,7 @@ s.addText([
   { text: "One platform. Complete project intelligence. ", options: { color: "D7E2F2" } },
   { text: "Greater outcomes.", options: { color: AMBER } },
 ], { x: M, y: 4.15, w: 9.4, h: 0.55, fontFace: F, fontSize: 24, bold: true, margin: 0 });
-s.addText("Portfolio → Program → Project → Delivery — one source of truth for scope, schedule, cost, risk, EVM and governance. Self-hosted, realtime, audit-ready.", { x: M, y: 4.85, w: 8.2, h: 0.75, fontFace: F, fontSize: 14, color: MUT_D, margin: 0 });
+s.addText("Portfolio → Program → Project → Delivery — one source of truth for scope, schedule, cost, risk, EVM and governance. Self-hosted, realtime, audit-ready — now with the Integrity Layer: honest staleness, evidence chains, P80 forecasting, benefits realization.", { x: M, y: 4.85, w: 8.2, h: 0.75, fontFace: F, fontSize: 14, color: MUT_D, margin: 0 });
 s.addShape(p.shapes.LINE, { x: M, y: 6.35, w: 3.2, h: 0, line: { color: "27405F", width: 1 } });
 s.addText("dynamiq Solutions  ·  Corporate Sales Presentation  ·  2026", { x: M, y: 6.5, w: 8, h: 0.3, fontFace: F, fontSize: 12, color: MUT_D, margin: 0 });
 
@@ -103,6 +103,34 @@ stats.forEach((st, i) => {
 sourceLine(s, "Platform footprint: PM Control Tower v1.0.0 product specification.");
 pageNo(s, 2);
 
+/* ============================================================ S2b · THE INTEGRITY LAYER */
+s = p.addSlide(); s.background = { color: BG };
+kicker(s, 'The Integrity Layer — v1.1');
+slideTitle(s, 'Eight firsts, one operational model');
+const integ = [
+  ['Freshness Engine', 'The dashboard tells you when it is lying — DATA AS OF chips, degrading tiles', GREEN],
+  ['Evidence Bundles', 'SHA-256 tamper-evident chain; verification pinpoints altered records', BLUE],
+  ['P80 Forecasting', 'Seeded Monte Carlo over the real CPM engine — honest date ranges', BLUE],
+  ['Say/Do Calibration', 'The organization remembers its estimation bias — advisory only', BLUE],
+  ['Scenario Sandbox', 'Test decisions on a clone; merge as a governed Change Request', AMBER],
+  ['AI Steering Pack', 'AI drafts, humans approve, audit captures both — never auto-executes', AMBER],
+  ['Benefits Realization', 'Value promised vs delivered after go-live — strategic RAG overlay', GREEN],
+  ['Full Traceability', 'Every mutation audited; every stochastic result reproducible', GREEN],
+];
+integ.forEach((f, i) => {
+  const col = i % 4, row = Math.floor(i / 4);
+  const x = M + col * 3.19, y = 1.66 + row * 2.42, w = 2.99, h = 2.2;
+  card(s, x, y, w, h, row === 0 ? BG : TINT, 0.1);
+  dot(s, x + 0.26, y + 0.32, 0.18, f[2]);
+  s.addText(f[0], { x: x + 0.56, y: y + 0.2, w: w - 0.7, h: 0.62, fontFace: F, fontSize: 14, bold: true, color: NAVY_TXT, margin: 0 });
+  s.addText(f[1], { x: x + 0.26, y: y + 0.92, w: w - 0.52, h: 1.15, fontFace: F, fontSize: 11.5, color: MUT, margin: 0 });
+});
+s.addText([
+  { text: 'The moat is not any single feature — ', options: { color: MUT } },
+  { text: 'it is that the architecture makes honesty structurally easy.', options: { bold: true, color: NAVY_TXT } },
+], { x: M, y: 6.6, w: 12.33, h: 0.35, fontFace: F, fontSize: 13, margin: 0 });
+pageNo(s, 4);
+
 /* ============================================================ S3 · THE PROBLEM */
 s = p.addSlide(); s.background = { color: BG };
 kicker(s, "The business problem");
@@ -126,7 +154,7 @@ s.addText([
   { text: "Risks and cost overruns surface at steering committees — after the decision window has closed.", options: { bullet: bu() } },
 ], { x: M + 0.35, y: 5.1, w: 11.6, h: 1.25, fontFace: F, fontSize: 13.5, color: TXT, paraSpaceAfter: 6, margin: 0 });
 sourceLine(s, "Sources: PMI, Pulse of the Profession (2018); Wellingtone, State of Project Management.");
-pageNo(s, 3);
+pageNo(s, 4);
 
 /* ============================================================ S4 · WHAT IT SOLVES */
 s = p.addSlide(); s.background = { color: BG };
@@ -147,7 +175,7 @@ pairs.forEach((pr, i) => {
   s.addShape(p.shapes.ROUNDED_RECTANGLE, { x: 5.75, y, w: 7.08, h: 0.88, rectRadius: 0.08, fill: { color: BLUE_SOFT }, line: { type: "none" } });
   s.addText(pr[1], { x: 6.0, y, w: 6.7, h: 0.88, fontFace: F, fontSize: 14.5, color: NAVY_TXT, valign: "middle", margin: 0 });
 });
-pageNo(s, 4);
+pageNo(s, 5);
 
 /* ============================================================ S5 · KEY FEATURES */
 s = p.addSlide(); s.background = { color: BG };
@@ -172,7 +200,7 @@ feats.forEach((f, i) => {
   s.addText(f[0], { x: x + 0.95, y: y + 0.14, w: 4.9, h: 0.32, fontFace: F, fontSize: 15, bold: true, color: NAVY_TXT, margin: 0 });
   s.addText(f[1], { x: x + 0.95, y: y + 0.5, w: 4.9, h: 0.52, fontFace: F, fontSize: 12.5, color: MUT, margin: 0 });
 });
-pageNo(s, 5);
+pageNo(s, 6);
 
 /* ============================================================ S6 · MODULES */
 s = p.addSlide(); s.background = { color: BG };
@@ -199,7 +227,7 @@ s.addText([
   { text: "62 view modules", options: { bold: true, color: BLUE } },
   { text: " — every screen reads from the same engines, so a number changed once is changed everywhere.", options: { color: MUT } },
 ], { x: M, y: 6.6, w: 12.33, h: 0.35, fontFace: F, fontSize: 13, margin: 0 });
-pageNo(s, 6);
+pageNo(s, 7);
 
 /* ============================================================ S7 · HOW EACH FEATURE IS USED */
 s = p.addSlide(); s.background = { color: BG };
@@ -218,7 +246,7 @@ roles.forEach((r, i) => {
   s.addText(r[0], { x: M + 0.22, y: y + 0.265, w: 2.5, h: 0.58, fontFace: F, fontSize: 12.5, bold: true, color: "FFFFFF", align: "center", valign: "middle", margin: 0 });
   s.addText(r[2], { x: M + 3.0, y: y + 0.12, w: 9.1, h: 0.92, fontFace: F, fontSize: 13.5, color: TXT, valign: "middle", margin: 0 });
 });
-pageNo(s, 7);
+pageNo(s, 8);
 
 /* ============================================================ S8 · WORKFLOW & AUTOMATION */
 s = p.addSlide(); s.background = { color: BG };
@@ -258,7 +286,7 @@ autos.forEach((a, i) => {
   s.addText(a[1], { x: x + 2.1, y, w: 3.75, h: 0.52, fontFace: F, fontSize: 12.5, color: TXT, valign: "middle", margin: 0 });
 });
 sourceLine(s, "A Socket.IO realtime gateway pushes every engine result to connected screens instantly.");
-pageNo(s, 8);
+pageNo(s, 9);
 
 /* ============================================================ S9 · BENEFITS */
 s = p.addSlide(); s.background = { color: BG };
@@ -280,7 +308,7 @@ s.addText([
   { text: "GREY honesty: ", options: { bold: true, color: NAVY_TXT } },
   { text: "when data is missing, the tower shows GREY — not a comforting green. Executives trust what they see.", options: { color: MUT } },
 ], { x: M, y: 6.45, w: 12.33, h: 0.4, fontFace: F, fontSize: 13, margin: 0 });
-pageNo(s, 9);
+pageNo(s, 10);
 
 /* ============================================================ S10 · REPORTS & ANALYTICS */
 s = p.addSlide(); s.background = { color: BG };
@@ -313,7 +341,7 @@ reps.forEach((r, i) => {
   s.addText(r[1], { x: 7.75, y: y + 0.4, w: 4.9, h: 0.34, fontFace: F, fontSize: 11.5, color: MUT, margin: 0 });
 });
 sourceLine(s, "Chart: reference deployment sample data (illustrative).");
-pageNo(s, 10);
+pageNo(s, 11);
 
 /* ============================================================ S11 · ROI */
 s = p.addSlide(); s.background = { color: BG };
@@ -347,7 +375,7 @@ s.addText([
   { text: "One platform replaces spreadsheet sprawl and tool patchworks", options: { bullet: bu() } },
 ], { x: 7.8, y: 4.8, w: 4.75, h: 1.6, fontFace: F, fontSize: 12.5, color: TXT, paraSpaceAfter: 8, margin: 0 });
 sourceLine(s, "Hour figures are illustrative estimates; the 9.9% waste figure is sourced (PMI, 2018).");
-pageNo(s, 11);
+pageNo(s, 12);
 
 /* ============================================================ S12 · USE CASES */
 s = p.addSlide(); s.background = { color: BG };
@@ -367,7 +395,7 @@ cases.forEach((c, i) => {
   s.addText(c[0], { x: x + 1.0, y: y + 0.3, w: 4.8, h: 0.55, fontFace: F, fontSize: 15.5, bold: true, color: NAVY_TXT, valign: "middle", margin: 0 });
   s.addText(c[1], { x: x + 0.25, y: y + 1.05, w: 5.5, h: 1.05, fontFace: F, fontSize: 12.5, color: MUT, margin: 0 });
 });
-pageNo(s, 12);
+pageNo(s, 13);
 
 /* ============================================================ S13 · WHY ADOPT (dark) */
 s = p.addSlide(); s.background = { color: DARK };
@@ -387,7 +415,7 @@ whys.forEach((wv, i) => {
   s.addText(wv[0], { x: x + 0.3, y: y + 0.16, w: 5.4, h: 0.34, fontFace: F, fontSize: 15, bold: true, color: AMBER, margin: 0 });
   s.addText(wv[1], { x: x + 0.3, y: y + 0.54, w: 5.4, h: 0.75, fontFace: F, fontSize: 12.5, color: "C9D6E8", margin: 0 });
 });
-pageNo(s, 13);
+pageNo(s, 14);
 
 /* ============================================================ S14 · IMPLEMENTATION */
 s = p.addSlide(); s.background = { color: BG };
@@ -414,7 +442,7 @@ s.addText([
   { text: "Included from day one:  ", options: { bold: true, color: NAVY_TXT } },
   { text: "reference enterprise dataset  ·  10-product documentation set  ·  operations runbook  ·  audit-ready event history  ·  executive demo data", options: { color: TXT } },
 ], { x: M + 0.35, y: 5.35, w: 11.7, h: 1.1, fontFace: F, fontSize: 13.5, valign: "middle", margin: 0 });
-pageNo(s, 14);
+pageNo(s, 15);
 
 /* ============================================================ S15 · SECURITY & SCALE */
 s = p.addSlide(); s.background = { color: BG };
@@ -437,7 +465,7 @@ secs.forEach((sec, i) => {
   s.addText(sec[1], { x: x + 0.62, y: y + 0.54, w: 5.15, h: 0.8, fontFace: F, fontSize: 12.5, color: MUT, margin: 0 });
 });
 sourceLine(s, "Platform detail: PM Control Tower security & architecture documentation (v1.0.0).");
-pageNo(s, 15);
+pageNo(s, 16);
 
 /* ============================================================ S16 · DIFFERENTIATION */
 s = p.addSlide(); s.background = { color: BG };
@@ -461,7 +489,7 @@ s.addText([
   { text: "The difference that matters:  ", options: { bold: true, color: NAVY_TXT } },
   { text: "PM Control Tower computes the truth instead of collecting it.", options: { color: MUT } },
 ], { x: M, y: 6.6, w: 12.33, h: 0.35, fontFace: F, fontSize: 13, margin: 0 });
-pageNo(s, 16);
+pageNo(s, 17);
 
 /* ============================================================ S17 · CTA (dark) */
 s = p.addSlide(); s.background = { color: DARK };

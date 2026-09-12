@@ -21,10 +21,11 @@ feeds, traceable insights and one-click executive reporting packs.
 | **Control** | Budget lines & financials, **EVM engine** (CPI/SPI/EAC/ETC/VAC/TCPI + history), health engine with snapshots, RAID, change requests, stage gates, **governance rules engine** (auto alerts → inbox → health recalc) |
 | **Intelligence** | **Executive Control Tower** (RAG + GREY honesty, exception-first feed, traceable insights, 30/60/90 outlook), **Leadership Pack** (one-click, versioned, comparable), 17 sub-reports, executive status reports, What-Changed, report schedules, analytics, AI assistant |
 | **Connect** | Integration hub, webhook subscriptions with delivery log, automation rules, AI connector gateway |
+| **Integrity** | Data freshness engine (honest staleness), evidence bundles (SHA-256 tamper-evident chains), seeded Monte Carlo P80 forecasting, say/do calibration, scenario sandbox (branch & merge), AI-drafted steering packs (human-gated), benefits realization |
 | **Admin** | Users, roles (8 system roles / 32 permissions), PMO template library, full audit trail |
 | **Data exchange** | CSV/JSON export for 22 entities; governed CSV import (dry-run validation) for 13 master-data entities |
 
-**Footprint**: 57 data models · 104 API routes · 8 computation engines · 62 view modules ·
+**Footprint**: 66 data models · 113 API routes · 15 computation engines · 63 view modules ·
 48 UI components · Socket.IO realtime gateway.
 
 ---

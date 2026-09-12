@@ -1,4 +1,18 @@
-# Changelog — PM CONTROL TOWER
+# CHANGELOG
+
+## 1.1.0 — THE INTEGRITY LAYER (2026-09-12)
+
+Eight first-of-their-kind features on one operational model (constitution: every number computed, every mutation audited, AI drafts / humans approve, staleness never silent, randomness always seeded):
+
+- **Data Freshness Integrity Engine** — per-feed staleness (timesheets/ledger/tasks/RAID/gates) vs configurable cadences; composite worst-feed score; DATA AS OF chips, degrading tiles, executive freshness rail; critical staleness raises alerts + health deduction.
+- **Evidence Bundle Export** — one-click audit-grade bundle (baselines, changes, gates, timesheets, ledger, health, audit) with a SHA-256 hash chain; re-verification passes/fails and pinpoints tampered documents.
+- **P80 Probabilistic Forecasting** — seeded (mulberry32) Monte Carlo over the existing CPM engine; P10/P50/P80/P90 for finish, milestones and cost + per-task criticality index; stale runs flagged, never silently served.
+- **Say/Do Calibration** — median(actual/planned) factors per team/work-type/project with MAD confidence; advisory-only planning suggestions; blame-free framing.
+- **Scenario Sandbox** — fork a project, apply overrides, re-run the SAME engines on the clone, quantified diff; merge converts the sandbox into a Change Request inside one audited transaction. Production roll-ups structurally cannot read sandbox rows.
+- **Agentic Steering Pack** — AI drafts the weekly pack + replan proposals (SPI < 0.9 for 3 periods); every draft requires a recorded human decision; append-only once decided.
+- **Benefits Realization** — benefit profiles activate when the final gate passes; portfolio value promised/delivered/at-risk; strategic health overlay (green delivery with no delivered value = strategically amber).
+- **RBAC + realtime** — new integrity.view/manage, scenario.manage, benefits.manage permissions; freshness.changed, simulation.completed, scenario.merged, benefits.updated, ai.action events.
+
 
 All notable changes to this deliverable are documented here.
 

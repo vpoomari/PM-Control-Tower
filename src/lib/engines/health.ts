@@ -6,6 +6,7 @@ import { db } from "../db";
 import { clamp, round2 } from "../constants";
 import { computeEVM } from "./evm";
 import { emitRealtime } from "../realtime";
+import { freshnessPenalty, computeFreshness, FreshnessLevel } from "./freshness";
 
 export interface HealthInputs {
   cpi: number; spi: number;
@@ -15,6 +16,7 @@ export interface HealthInputs {
   overdueMilestones: number;
   governanceAlerts: number;
   overAllocated: number;
+  freshnessLevel?: FreshnessLevel;
 }
 
 export function scoreHealth(i: HealthInputs): { score: number; rag: string; factors: Record<string, number> } {
@@ -30,6 +32,7 @@ export function scoreHealth(i: HealthInputs): { score: number; rag: string; fact
   const msPen = Math.min(i.overdueMilestones * 5, 15);
   const alertPen = Math.min(i.governanceAlerts * 5, 15);
   const resPen = i.overAllocated > 0 ? 10 : 0;
+  const freshPen = freshnessPenalty(i.freshnessLevel ?? "CURRENT");
 
   factors.costPerformance = round2(cpiPen);
   factors.schedulePerformance = round2(spiPen);
@@ -39,8 +42,9 @@ export function scoreHealth(i: HealthInputs): { score: number; rag: string; fact
   factors.overdueMilestones = msPen;
   factors.governanceAlerts = alertPen;
   factors.resourceCapacity = resPen;
+  factors.dataFreshness = freshPen;
 
-  score = clamp(100 - (cpiPen + spiPen + budgetPen + riskPen + issuePen + msPen + alertPen + resPen), 0, 100);
+  score = clamp(100 - (cpiPen + spiPen + budgetPen + riskPen + issuePen + msPen + alertPen + resPen + freshPen), 0, 100);
 
   // Rule overrides — hard floors
   let rag = score >= 80 ? "GREEN" : score >= 60 ? "AMBER" : "RED";
@@ -71,12 +75,15 @@ export async function recalcProjectHealth(projectId: string, triggeredBy = "SYST
   const criticalIssues = project.issues.filter((i) => i.severity === "CRITICAL" || i.priority === "CRITICAL").length;
   const govAlerts = project.alertEvents.filter((a) => a.severity === "CRITICAL").length;
 
+  const fm = await db.freshnessMetric.findMany({ where: { projectId } });
+  const freshness = computeFreshness(fm.map((f) => ({ feed: f.feed, lastUpdate: f.lastUpdate, expectedCadenceDays: f.expectedCadenceDays })));
+
   const { score, rag, factors } = scoreHealth({
     cpi: evm.cpi, spi: evm.spi,
     costVariance: evm.costVariance, scheduleVariance: evm.scheduleVariance,
     eac: evm.eac, bac: evm.bac, actualCost: evm.ac,
     openCriticalRisks: criticalRisks, openCriticalIssues: criticalIssues,
-    overdueMilestones, governanceAlerts: govAlerts, overAllocated: 0,
+    overdueMilestones, governanceAlerts: govAlerts, overAllocated: 0, freshnessLevel: freshness.level,
   });
 
   const prevRag = project.ragStatus;

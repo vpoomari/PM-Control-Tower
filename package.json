@@ -16,6 +16,8 @@
     "db:seed": "bun scripts/seed.ts && bun scripts/seed-leadership.ts",
     "db:seed:node": "tsx scripts/seed.ts && tsx scripts/seed-leadership.ts",
     "lint": "eslint .",
+    "test": "tsx --test tests/engines/*.test.ts",
+    "seed:integrity": "tsx scripts/seed-integrity.ts",
     "db:push": "prisma db push --accept-data-loss",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
