@@ -13,6 +13,7 @@ import { writeAudit } from "@/lib/audit";
 import { emitRealtime } from "@/lib/realtime";
 import { computeEVM } from "@/lib/engines/evm";
 import { recalcProjectHealth } from "@/lib/engines/health";
+import { runAutomations } from "@/lib/engines/automations";
 
 export const GET = withApi(async (ctx) => {
   const projectId = ctx.searchParams.get("projectId");
@@ -91,6 +92,8 @@ export const POST = withApi(async (ctx) => {
   });
   emitRealtime("evm:changed", { projectId: project.id, periodId: period.id, source }, `project:${project.id}`);
   await recalcProjectHealth(project.id, source);
+  // Automation cascade: threshold rules (e.g. SPI < 0.90) react to every period close
+  void runAutomations("EVM_PERIOD_CLOSED", { projectId: project.id, entityType: "EvmPeriod", entityId: period.id, spi: Math.round(spi * 100) / 100, cpi: Math.round(cpi * 100) / 100 });
 
   return ok({ period }, 201);
 }, { permission: "evm.manage", rateLimit: { limit: 60, windowMs: 60_000 } });

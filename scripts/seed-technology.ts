@@ -51,6 +51,19 @@ async function main() {
   } else {
     console.log("  ✓ Technology register already populated (" + appCount + " apps) — skipping");
   }
+
+  // ---- Governed delivery automation rules (WHEN/IF/THEN, engine-backed) ----
+  const rules = [
+    { name: "SPI breach -> PM re-plan alert", description: "EVM period closes with SPI < 0.90 -> PM alerted to review the drafted recovery scenarios.", triggerType: "EVM_PERIOD_CLOSED", conditionsJson: JSON.stringify([{ field: "spi", op: "LT", value: 0.9 }]), actionsJson: JSON.stringify([{ type: "CREATE_INBOX_ITEM", params: { roles: ["PROJECT_MANAGER", "PMO_ADMIN"], category: "ACTION_REQUIRED", priority: "HIGH", title: "SPI below 0.90 — quantified recovery scenarios drafted", message: "A reporting period closed with SPI below 0.90. Open Data Integrity > AI Actions for the three quantified recovery options (crash / descope / extend).", actionUrl: "#/integrity" } }]) },
+    { name: "EVM period closed -> executive digest", description: "Every period close notifies PMO leadership with the new CPI/SPI.", triggerType: "EVM_PERIOD_CLOSED", conditionsJson: JSON.stringify([]), actionsJson: JSON.stringify([{ type: "NOTIFY_ROLE", params: { roles: ["PMO_ADMIN", "EXECUTIVE"], title: "EVM period closed", message: "A new EVM period was captured — indices updated on the tower." } }]) },
+    { name: "Freshness critical -> PMO escalation", description: "Any project hitting CRITICAL data freshness escalates to the PMO.", triggerType: "FRESHNESS_CRITICAL", conditionsJson: JSON.stringify([]), actionsJson: JSON.stringify([{ type: "NOTIFY_ROLE", params: { roles: ["PMO_ADMIN"], title: "Data freshness critical", message: "A project crossed the critical staleness threshold — its dashboard figures may not reflect reality.", actionUrl: "#/integrity" } }]) },
+  ];
+  for (const r of rules) {
+    const exists = await db.automationRule.findFirst({ where: { name: r.name } });
+    if (!exists) await db.automationRule.create({ data: { ...r, isActive: true, createdBy: "seed" } });
+  }
+  console.log("  ✓ Governance automation rules seeded (SPI breach, period digest, freshness escalation)");
+
   await db.$disconnect();
 }
 main().catch((e) => { console.error("Seed failed:", e.message); process.exit(1); });

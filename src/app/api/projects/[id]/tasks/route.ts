@@ -61,6 +61,22 @@ export const POST = withApi(async (ctx) => {
 
   const body = await parseBody(ctx.req, taskCreateSchema);
 
+  // Automation: Historical Bias Injection — pre-fill duration from the Say/Do
+  // calibration engine (confident project-scope factor only; never silent: the
+  // adjustment is recorded in the task notes and returned as advisory).
+  let biasAdvisory: string | null = null;
+  try {
+    if (body.durationDays && body.durationDays > 0) {
+      const factor = await db.calibrationFactor.findFirst({ where: { scopeType: "project", scopeId: id, sampleSize: { gte: 5 }, factor: { gt: 1.15 } }, orderBy: { computedAt: "desc" } });
+      if (factor) {
+        const adjusted = Math.max(0.5, Math.round(body.durationDays * factor.factor * 10) / 10);
+        biasAdvisory = "Duration pre-filled " + body.durationDays + "d -> " + adjusted + "d (historical " + factor.factor + "x variance on this project, " + factor.sampleSize + " samples)";
+        body.description = (body.description ? body.description + " " : "") + "[" + biasAdvisory + "]";
+        body.durationDays = adjusted;
+      }
+    }
+  } catch { /* calibration not ready — never block task creation */ }
+
   let wbsCode: string | null = null;
   if (body.wbsId) {
     const node = await db.wBSNode.findFirst({ where: { id: body.wbsId, projectId: id }, select: { id: true, code: true, nodeType: true } });

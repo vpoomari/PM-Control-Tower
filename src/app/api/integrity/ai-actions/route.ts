@@ -8,7 +8,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 import { composeSteeringPack, stalledSpi } from "@/lib/engines/steering";
-import { computeProjectFreshness } from "@/lib/services/integrity";
+import { computeProjectFreshness, buildScenarioSnapshot, simulateScenario } from "@/lib/services/integrity";
 import { computeEVM } from "@/lib/engines/evm";
 import { writeAudit } from "@/lib/audit";
 import { emitRealtime } from "@/lib/realtime";
@@ -56,15 +56,34 @@ export const POST = withApi(async (ctx) => {
     spiTrend,
   });
 
+  // Automation: Threshold-Breach Re-Planning — SPI below 0.90 for consecutive periods
+  // generates THREE quantified recovery options (crash / descope / extend) from the
+  // scenario engine. Drafts only — a human decides.
+  let recoveryScenarios: { name: string; finishDeltaDays: number; description: string }[] | null = null;
+  if (pack.needsRePlan) {
+    try {
+      const snapshot = await buildScenarioSnapshot(body.projectId);
+      const mk = (o: Parameters<typeof simulateScenario>[1]) => simulateScenario(snapshot, o).diff;
+      const crash = mk({ durationChanges: Object.fromEntries(snapshot.tasks.filter((x) => !x.isSummary).slice(0, Math.max(1, Math.ceil(snapshot.tasks.length * 0.3))).map((x) => [x.id, Math.max(0.5, Math.round(x.durationDays * 0.7))])) });
+      const descope = mk({ durationChanges: Object.fromEntries([...snapshot.tasks].sort((x, y) => y.durationDays - x.durationDays).slice(0, Math.max(1, Math.ceil(snapshot.tasks.length * 0.2))).map((x) => [x.id, Math.max(0.5, Math.round(x.durationDays * 0.5))])) });
+      const extend = mk({ durationChanges: Object.fromEntries(snapshot.tasks.filter((x) => !x.isSummary).map((x) => [x.id, Math.round(x.durationDays * 1.25)])) });
+      recoveryScenarios = [
+        { name: "Crash schedule", finishDeltaDays: crash.finishDeltaDays, description: "Compress the 30% longest-work tasks to 70% duration — finish delta " + crash.finishDeltaDays + "d vs baseline (assumes added cost/pressure)." },
+        { name: "Descope lowest value", finishDeltaDays: descope.finishDeltaDays, description: "Halve the 20% heaviest low-priority tasks — finish delta " + descope.finishDeltaDays + "d (requires scope change approval)." },
+        { name: "Extend timeline", finishDeltaDays: extend.finishDeltaDays, description: "Re-plan all tasks at 125% duration — finish delta " + extend.finishDeltaDays + "d (honest reset, no added cost)." },
+      ];
+    } catch { /* scenario math not available — draft without options */ }
+  }
+
   const action = await db.aiAction.create({
     data: {
       type: body.type, projectId: body.projectId, title: pack.title,
-      contentJson: JSON.stringify(pack), status: "DRAFTED", trigger: pack.needsRePlan ? "SPI_BELOW_090_3WEEKS" : "MANUAL",
+      contentJson: JSON.stringify({ ...pack, recoveryScenarios }), status: "DRAFTED", trigger: pack.needsRePlan ? "SPI_BELOW_090_3WEEKS" : "MANUAL",
     },
   });
   await writeAudit({ userId: session.id, userName: session.name, action: "CREATE", entityType: "AiAction", entityId: action.id, entityName: pack.title, after: { type: body.type, trigger: "drafted for human review" } });
   emitRealtime("ai:action", { actionId: action.id, projectId: body.projectId, type: body.type }, `project:${body.projectId}`);
-  return ok({ actionId: action.id, title: pack.title, needsRePlan: pack.needsRePlan, pack }, 201);
+  return ok({ actionId: action.id, title: pack.title, needsRePlan: pack.needsRePlan, pack: { ...pack, recoveryScenarios } }, 201);
 }, { permission: "integrity.manage", rateLimit: { limit: 30, windowMs: 60_000 } });
 
 export const PATCH = withApi(async (ctx) => {
