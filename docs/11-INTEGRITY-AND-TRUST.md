@@ -65,3 +65,13 @@ realizing value as strategically AMBER. Every mutation is audited and emits
 New permissions: `integrity.view` (EXECUTIVE+, PM, teams), `integrity.manage`
 (PMO/program/project managers), `scenario.manage` (PMO/portfolio/program),
 `benefits.manage` (PMO/portfolio/program/project managers). All mutations audited.
+
+
+## v1.2 – v1.3 hardening addendum
+
+- **Async Monte Carlo worker**: POST /api/integrity/simulate returns 202 QUEUED; the worker drains QUEUED → RUNNING → COMPLETE/FAILED; results carry calendar dates (P50–P80) and a P10–P90 fan chart; stale runs are flagged, never served silently.
+- **Evidence ZIP export**: GET /api/integrity/evidence/[id]/download returns INDEX.txt (human-readable) + manifest.json + docs/*.json in a store-method ZIP built by a dependency-free writer.
+- **Scenario rebase-on-merge**: duration deltas rebase against drifted production values; vanished assignments skip; every decision recorded in the Change Request.
+- **Signed approval links**: HMAC-SHA256 (jose) expiring links for timesheet/gate/change approvals with HTML decision pages — status CONFIGURED until external chat channels are tested live.
+- **Governed automation pack**: EVM period close triggers the automation engine — SPI < 0.90 drafts THREE quantified recovery scenarios (crash/descope/extend, CPM-verified); task creation pre-fills duration from confident calibration factors (recorded, never silent); rules SPI-breach / period-digest / freshness-escalation ship seeded.
+- **Learning AI**: every assistant interaction is remembered (AiMemory); feedback (positive/negative) updates accuracy and instantly writes weighted CORRECTION entries into AiKnowledge; the Learning Profile shows day-by-day evolution computed from real history. AI still never auto-executes.
