@@ -35,12 +35,13 @@ interface ScenarioRow { id: string; name: string; projectId: string; status: str
 interface AiActionRow { id: string; type: string; title: string; status: string; trigger: string | null; humanReviewer: string | null; createdAt: string; contentJson: string; project: { code: string; name: string } | null }
 interface BenefitProfileRow { id: string; name: string; type: string; baselineValue: number; targetValue: number; active: boolean; owner: string; actuals: { value: number; period: string }[] }
 interface BenefitProjectRow { project: ProjectLite; profiles: BenefitProfileRow[]; rollup: { promised: number; delivered: number; realizationPct: number; atRiskProfiles: string[]; activeProfiles: number }; strategic: { rag: string; note: string } }
+interface DqRow { project: { id: string; code: string; name: string; ragStatus: string; healthScore: number }; score: number; issues: { check: string; detail: string }[]; riskTotals: { open: number; noOwner: number; noMitigation: number }; unassignedTasks: number }
 interface ScenarioDiff { baseFinishDay: number; simulatedFinishDay: number; finishDeltaDays: number; budgetDelta: number; applied: string[]; affectedTasks: string[] }
 
 const HATCH = { backgroundImage: "repeating-linear-gradient(45deg, rgba(15,23,42,0.07) 0 6px, transparent 6px 12px)" };
 const dayToDate = (startISO: string, day: number) => new Date(new Date(startISO).getTime() + day * 86_400_000).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const LEVEL_TONE: Record<string, string> = { CURRENT: "bg-emerald-50 text-emerald-700 border-emerald-200", WARN: "bg-amber-50 text-amber-700 border-amber-200", DEGRADE: "bg-orange-50 text-orange-700 border-orange-200", CRITICAL: "bg-red-50 text-red-700 border-red-200" };
-const TABS = ["Freshness", "Evidence", "Simulations", "Calibration", "Scenarios", "AI Actions", "Benefits"] as const;
+const TABS = ["Freshness", "Evidence", "Simulations", "Calibration", "Scenarios", "AI Actions", "Benefits", "Data Quality"] as const;
 
 export default function IntegrityView() {
   const me = useMe();
@@ -59,6 +60,7 @@ export default function IntegrityView() {
   const scenarios = useApi<{ scenarios: ScenarioRow[] }>(tab === "Scenarios" ? "/api/integrity/scenarios" : null);
   const aiActions = useApi<{ actions: AiActionRow[] }>(tab === "AI Actions" ? "/api/integrity/ai-actions" : null);
   const benefits = useApi<{ projects: BenefitProjectRow[]; totals: { promised: number; delivered: number; realizationPct: number } }>(tab === "Benefits" ? "/api/integrity/benefits" : null);
+  const dq = useApi<{ projects: DqRow[]; averageScore: number; resourceIssues: { total: number; withoutSkills: number; names: string[] } }>(tab === "Data Quality" ? "/api/integrity/data-quality" : null);
   const runs = useApi<{ runs: SimRun[] }>(tab === "Simulations" && projectId ? `/api/integrity/simulate?projectId=${projectId}` : null);
 
   const [sim, setSim] = useState<SimResult | null>(null);
@@ -485,6 +487,34 @@ export default function IntegrityView() {
           ))}
         </div>
       ))}
+
+      {/* DATA QUALITY */}
+      {tab === "Data Quality" && (dq.loading && !dq.data ? <LoadingBlock /> : dq.error ? <ErrorBlock message={dq.error} onRetry={dq.refetch} /> : (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <StatCard label="Average data quality" value={dq.data!.averageScore + "/100"} tone={dq.data!.averageScore >= 80 ? "good" : dq.data!.averageScore >= 60 ? "warn" : "bad"} />
+            <StatCard label="Projects audited" value={dq.data!.projects.length} />
+            <StatCard label="Projects with gaps" value={dq.data!.projects.filter((p) => p.issues.length > 0).length} tone="warn" />
+            <StatCard label="Resources without skills" value={dq.data!.resourceIssues.withoutSkills + "/" + dq.data!.resourceIssues.total} tone={dq.data!.resourceIssues.withoutSkills > 0 ? "warn" : "good"} sub={dq.data!.resourceIssues.names.slice(0, 3).join(", ")} />
+          </div>
+          {dq.data!.projects.map((row) => (
+            <SectionCard key={row.project.id} title={row.project.code + " — " + row.project.name}
+              description={"delivery health " + row.project.ragStatus + " · " + row.riskTotals.open + " open risk(s) · " + row.unassignedTasks + " unassigned task(s)"}
+              actions={<span className={cn("px-2 py-0.5 rounded-full border text-xs font-semibold tabular-nums", row.score >= 80 ? "border-emerald-200 text-emerald-700 bg-emerald-50" : row.score >= 60 ? "border-amber-200 text-amber-700 bg-amber-50" : "border-red-200 text-red-700 bg-red-50")}>DQ {row.score}/100</span>}>
+              {row.issues.length === 0 ? (
+                <p className="text-sm text-emerald-700 flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4" />No data-quality gaps — owner, sponsor, dates, budget and RAID hygiene all present.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {row.issues.map((iss, i) => (
+                    <span key={i} title={iss.detail} className="px-2 py-1 rounded-md border border-amber-200 bg-amber-50 text-xs text-amber-800">{iss.check}</span>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
+
