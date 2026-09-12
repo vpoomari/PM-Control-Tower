@@ -1476,3 +1476,67 @@ model SystemConfig {
   freshnessGraceHours  Int      @default(24)
   updatedAt            DateTime @updatedAt
 }
+
+// ============ TECHNOLOGY & ARCHITECTURE (v1.3.0) ============
+
+model TechApplication {
+  id                  String   @id @default(cuid())
+  name                String
+  category            String   @default("APPLICATION") // APPLICATION | PLATFORM | INFRASTRUCTURE | API
+  businessCriticality String   @default("MEDIUM") // LOW | MEDIUM | HIGH | MISSION_CRITICAL
+  lifecycleStatus     String   @default("ACTIVE") // PLANNED | ACTIVE | LEGACY | SUNSET | RETIRED
+  cloudHosted         Boolean  @default(false)
+  owner               String?
+  version             String?
+  healthScore         Int      @default(80)
+  businessUnits       String?
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  debts    TechnicalDebt[]
+  releases TechRelease[]
+
+  @@index([lifecycleStatus])
+}
+
+model TechTechnology {
+  id              String    @id @default(cuid())
+  name            String
+  category        String // LANGUAGE | FRAMEWORK | DATABASE | CLOUD | TOOL
+  version         String?
+  lifecycleStatus String    @default("ACTIVE") // ACTIVE | DEPRECATED | UNSUPPORTED
+  supportEndsAt   DateTime?
+  usedByCount     Int       @default(0)
+
+  @@index([lifecycleStatus])
+}
+
+model TechnicalDebt {
+  id            String  @id @default(cuid())
+  applicationId String?
+  title         String
+  severity      String  @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  estimateHours Float   @default(0)
+  status        String  @default("OPEN") // OPEN | PLANNED | RESOLVED
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  application TechApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+}
+
+model TechRelease {
+  id            String   @id @default(cuid())
+  applicationId String
+  version       String
+  releasedAt    DateTime
+  status        String   @default("DEPLOYED") // PLANNED | DEPLOYED | ROLLED_BACK
+  deployments   Int      @default(1)
+  leadTimeDays  Float    @default(0)
+
+  application TechApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([releasedAt])
+}

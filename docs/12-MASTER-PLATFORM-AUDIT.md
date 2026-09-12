@@ -38,7 +38,7 @@ Verdict per domain: ✅ exists · 🟡 partial (extend later) · ❌ not built (
 - **§30 Navigation** — groups map to the recommended structure except a dedicated Technology/Architecture group.
 
 ## Not built ❌ (roadmap — biggest gaps)
-- **§8/§9 Technology & Architecture domain** — applications, technologies, releases, technical-debt register, architecture decisions/records, security-risk register, DevOps metrics. (Integration hub + AI gateway exist but not the EA repository.)
+- **§8/§9 Technology & Architecture domain** — ✅ v1.3.0: application portfolio with lifecycle/criticality/cloud tracking, technology register with unsupported warnings, technical-debt register, release/DevOps metrics, computed architecture-health score. (Architecture Decision Records and full EA repository remain a future extension.)
 - **§21 Portfolio prioritization scoring engine** — weighted multi-factor scoring + bubble chart + budget-constrained scenario selection (Scenario Sandbox provides the mechanics to build on).
 - **§37 Organization/BusinessUnit/Vendor-contract-invoice entities** — vendors exist; contracts/invoices/Org-BU hierarchy do not.
 - **§3/§4 Template library** — PMO project templates exist; document/report template library is a separate build.

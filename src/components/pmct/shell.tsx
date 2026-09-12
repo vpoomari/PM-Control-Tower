@@ -12,7 +12,7 @@ import { CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, C
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import {
+import { Server, 
   Gauge, Layers, GitBranch, FolderKanban, ClipboardList, ListTree, CalendarRange, GanttChartSquare,
   Milestone, Layers3, Users, Clock, Inbox, CalendarCheck2, Wallet, TrendingUp, HeartPulse, ShieldAlert,
   ArrowLeftRight, ScanSearch, Landmark, BarChart3, LineChart, Sparkles, Plug, Blocks, Workflow, Bell,
@@ -66,6 +66,7 @@ const NAV: NavGroup[] = [
       { label: "Stage Gates", href: "/gates", icon: ScanSearch, perm: "project.view" },
       { label: "Governance", href: "/governance", icon: Landmark, perm: "project.view" },
       { label: "Data Integrity", href: "/integrity", icon: ShieldCheck, perm: "integrity.view" },
+      { label: "CTO Tower", href: "/technology", icon: Server, perm: "integration.view" },
     ],
   },
   {
