@@ -3,14 +3,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { api } from "@/lib/client";
+import { api, useApi } from "@/lib/client";
 import {
   PageHeader, SectionCard, Button, Badge, LoadingBlock, ErrorBlock, cn,
 } from "@/components/pmct/kit";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Send, Sparkles, ShieldCheck, Bot, User as UserIcon, RotateCcw,
-} from "lucide-react";
+import { Send, Sparkles, ShieldCheck, Bot, User as UserIcon, RotateCcw, BrainCircuit } from "lucide-react";
 
 interface AiExecution {
   id: string;
@@ -127,6 +125,7 @@ export default function AssistantView() {
         breadcrumb={["Intelligence", "Assistant"]}
         subtitle="Ask natural-language questions across the governed portfolio. Every execution is permission-checked, project-scoped and written to the audit trail."
       />
+      <LearningProfile />
 
       <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
         {/* Chat column */}
@@ -292,5 +291,37 @@ function TypingIndicator() {
         <span className="text-[11px] text-slate-400 ml-1.5">Insight Engine analysing portfolio data…</span>
       </div>
     </div>
+  );
+}
+
+
+// ================= LEARNING PROFILE — the assistant evolves day by day =================
+function LearningProfile() {
+  const mem = useApi<{ profile: { interactions30d: number; drafts30d: number; approvedDrafts: number; feedbackPositive: number; feedbackNegative: number; accuracyPct: number | null; topTopics: { topic: string; count: number }[] }; evolution: { day: string; interactions: number; drafts: number; lessons: number }[]; knowledge: { id: string; day: string; kind: string; content: string }[] }>("/api/assistant/memory");
+  if (!mem.data) return null;
+  const p = mem.data.profile;
+  return (
+    <SectionCard title="Learning profile — how the assistant evolves" description="Computed from real interaction history: queries, draft decisions and your feedback. Nothing invented.">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+        <div className="rounded-lg border border-slate-200 p-2.5"><p className="text-[11px] uppercase text-slate-400">Interactions (30d)</p><p className="text-xl font-semibold text-slate-800 tabular-nums">{p.interactions30d}</p></div>
+        <div className="rounded-lg border border-slate-200 p-2.5"><p className="text-[11px] uppercase text-slate-400">Drafts → approved</p><p className="text-xl font-semibold text-slate-800 tabular-nums">{p.approvedDrafts}/{p.drafts30d}</p></div>
+        <div className="rounded-lg border border-slate-200 p-2.5"><p className="text-[11px] uppercase text-slate-400">Answer accuracy</p><p className={cn("text-xl font-semibold tabular-nums", (p.accuracyPct ?? 100) >= 70 ? "text-emerald-600" : "text-amber-600")}>{p.accuracyPct == null ? "—" : p.accuracyPct + "%"}</p></div>
+        <div className="rounded-lg border border-slate-200 p-2.5"><p className="text-[11px] uppercase text-slate-400">Feedback</p><p className="text-xl font-semibold tabular-nums"><span className="text-emerald-600">{p.feedbackPositive}</span> / <span className="text-red-500">{p.feedbackNegative}</span></p></div>
+      </div>
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">What the organization asks about most</p>
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {p.topTopics.length === 0 ? <span className="text-xs text-slate-400">No topic patterns yet — ask more questions.</span> : p.topTopics.map((t) => (
+          <Badge key={t.topic} variant="outline" className="border-blue-200 text-blue-700">{t.topic} · {t.count}</Badge>
+        ))}
+      </div>
+      {mem.data.knowledge.length > 0 && (
+        <><p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Distilled knowledge (evolves daily)</p>
+        <div className="space-y-1">
+          {mem.data.knowledge.slice(0, 5).map((k) => (
+            <div key={k.id} className="text-xs text-slate-600 flex gap-2"><span className="text-slate-400 tabular-nums">{k.day.slice(0, 10)}</span><span>{k.content}</span></div>
+          ))}
+        </div></>
+      )}
+    </SectionCard>
   );
 }

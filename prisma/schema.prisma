@@ -1540,3 +1540,30 @@ model TechRelease {
 
   @@index([releasedAt])
 }
+
+// ============ AI LEARNING MEMORY (v1.3.2) ============
+
+model AiMemory {
+  id            String   @id @default(cuid())
+  userId        String
+  question      String
+  answerSummary String?
+  topic         String?
+  feedback      String   @default("NONE") // POSITIVE | NEGATIVE | NONE
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([topic])
+}
+
+model AiKnowledge {
+  id      String   @id @default(cuid())
+  day     DateTime
+  kind    String // PATTERN | PREFERENCE | CORRECTION
+  content String
+  weight  Float    @default(1)
+  source  String   @default("DISTILLED")
+
+  @@unique([day, content])
+  @@index([day])
+}
