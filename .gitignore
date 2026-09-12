@@ -1,0 +1,16 @@
+# Dependencies & build output
+node_modules/
+.next/
+out/
+dist/
+
+# Logs & caches
+*.log
+dev.log
+server.log
+*.tsbuildinfo
+
+# Deck build artifacts (keep build.js + pptx, drop heavy deps/exports)
+sales-deck/node_modules/
+sales-deck/png/
+sales-deck/package-lock.json

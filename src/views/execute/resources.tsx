@@ -7,7 +7,7 @@ import { api, useApi, useRealtimeRefetch } from "@/lib/client";
 import { fmtDate, money, num } from "@/lib/constants";
 import {
   PageHeader, SectionCard, StatCard, StatusChip, Toolbar, SearchInput, LoadingBlock, ErrorBlock,
-  EmptyState, DataTable, Column, Button, Badge, Input, cn,
+  EmptyState, DataTable, Column, Button, Badge, Input, ConfirmButton, cn,
 } from "@/components/pmct/kit";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -16,7 +16,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { hasPerm, useMe } from "@/views/execute/shared/pickers";
-import { LayoutGrid, Table2, UserPlus, Users, Gauge, TriangleAlert } from "lucide-react";
+import { LayoutGrid, Table2, UserPlus, Users, Gauge, TriangleAlert, Trash2 } from "lucide-react";
 
 interface ResourceRow {
   [key: string]: unknown;
@@ -97,6 +97,22 @@ export default function ResourcesView() {
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const deleteResource = async () => {
+    if (!detailId) return;
+    setDeleting(true);
+    try {
+      await api.del(`/api/resources/${detailId}`);
+      toast.success("Resource removed from the register");
+      setDetailId(null);
+      await list.refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not delete resource");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -309,6 +325,26 @@ export default function ResourcesView() {
                         ))}
                       </div>
                     )}
+                </div>
+              )}
+
+              {hasPerm(me, "resource.manage") && (
+                <div className="rounded-lg border border-red-200 bg-red-50/60 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-red-900">Danger zone</p>
+                      <p className="text-xs text-red-600">Removes the register entry. Resources with assignments or timesheets must be deactivated instead.</p>
+                    </div>
+                    <ConfirmButton
+                      variant="destructive"
+                      title={`Delete ${detail.data?.resource.name || "resource"}?`}
+                      description="This permanently removes the resource record. This action cannot be undone."
+                      confirmLabel={deleting ? "Deleting…" : "Delete resource"}
+                      onConfirm={() => void deleteResource()}
+                    >
+                      <Button variant="destructive" size="sm" className="shrink-0"><Trash2 className="h-3.5 w-3.5 mr-1" />Delete</Button>
+                    </ConfirmButton>
+                  </div>
                 </div>
               )}
             </div>

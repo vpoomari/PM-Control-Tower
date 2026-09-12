@@ -396,18 +396,55 @@ export async function seedPart2({ db, roles, users, projects, projectIds, tasksB
   await db.inboxItem.create({ data: { userId: pm2.id, category: "ESCALATIONS", title: "Critical issue open 14+ days", message: "Finance domain reconciliation failure is aging. Turnaround plan due.", entityType: "Issue", priority: "CRITICAL", projectId: projectIds["PRJ-DATA-002"], actionUrl: "#/raid", sourceType: "RAID" } });
   await db.notification.create({ data: { userId: ceo.id, notifType: "HEALTH", category: "HEALTH", title: "Project health changed to RED", message: "Enterprise Data Platform health dropped to RED — CPI 0.78, SPI below threshold.", entityType: "Project", entityId: projectIds["PRJ-DATA-002"], projectId: projectIds["PRJ-DATA-002"], severity: "CRITICAL", actionUrl: "#/projects" } });
   await db.notification.create({ data: { userId: fin.id, notifType: "BUDGET", category: "BUDGET", title: "Budget utilization alert", message: "Enterprise Data Platform spend exceeded governance threshold this period.", entityType: "Project", entityId: projectIds["PRJ-DATA-002"], projectId: projectIds["PRJ-DATA-002"], severity: "WARNING", actionUrl: "#/financials" } });
-  const plannerDefs = [
-    { user: t1, title: "Focus: ERP finance module configuration", type: "FOCUS", dayOff: 0, start: "09:00", end: "12:00", prio: "HIGH" },
-    { user: t1, title: "Steering committee preparation", type: "MEETING", dayOff: 1, start: "15:00", end: "16:30", prio: "MEDIUM" },
-    { user: t2, title: "Fix reconciliation extract logic", type: "TASK", dayOff: 0, start: "09:00", end: "13:00", prio: "CRITICAL" },
-    { user: t2, title: "Domain design review", type: "MEETING", dayOff: 2, start: "11:00", end: "12:00", prio: "MEDIUM" },
-    { user: t3, title: "UAT triage with QA", type: "TASK", dayOff: 1, start: "10:00", end: "12:00", prio: "HIGH" },
-    { user: pm1, title: "Gate 2 evidence review", type: "FOCUS", dayOff: 3, start: "14:00", end: "16:00", prio: "HIGH" },
+
+  // Personal inbox starter items — every demo role signs in to a non-empty work inbox.
+  const personalInbox: { user: { id: string }; category: string; title: string; message: string; priority: string; sourceType: string; actionUrl: string }[] = [
+    { user: ceo, category: "GOVERNANCE", title: "CPI below target on strategic projects", message: "Two flagship projects are tracking under the cost-performance governance threshold this period.", priority: "HIGH", sourceType: "GOVERNANCE", actionUrl: "#/governance" },
+    { user: ceo, category: "ACTION_REQUIRED", title: "Quarterly portfolio review sign-off", message: "Executive sign-off is requested on the quarterly portfolio performance narrative before the board pack is issued.", priority: "HIGH", sourceType: "REPORT", actionUrl: "#/governance" },
+    { user: pmo, category: "ACTION_REQUIRED", title: "PMO operating review due", message: "Consolidate schedule, cost and governance exceptions into the weekly PMO operating review.", priority: "MEDIUM", sourceType: "REPORT", actionUrl: "#/governance" },
+    { user: pfmg, category: "GOVERNANCE", title: "Portfolio burn tracking above plan", message: "Aggregate spend across the active portfolio is trending above the phase plan — review investment mix.", priority: "MEDIUM", sourceType: "GOVERNANCE", actionUrl: "#/financials" },
+    { user: prgm, category: "MENTIONS", title: "Priya Nair mentioned you", message: "\"@Marcus can we lock the integration cutover window before the next steering?\"", entityType: "Comment", priority: "MEDIUM", sourceType: "MENTION", actionUrl: "#/inbox" },
+    { user: fin, category: "ACTION_REQUIRED", title: "Budget variance review due Friday", message: "Cost variance on the regulated workstream needs a finance position before the period close.", priority: "MEDIUM", sourceType: "FINANCE", actionUrl: "#/financials" },
+    { user: fin, category: "APPROVALS", title: "Forecast revision awaiting finance concurrence", message: "Project forecast revision routed for finance concurrence as part of the monthly calibration.", priority: "LOW", sourceType: "APPROVAL", actionUrl: "#/financials" },
+    { user: auditor, category: "ACTION_REQUIRED", title: "Control evidence sampling ready", message: "Q3 control evidence bundle is ready for sampling — gate evidence and change approvals included.", priority: "LOW", sourceType: "AUDIT", actionUrl: "#/inbox" },
+    { user: t1, category: "ACTION_REQUIRED", title: "Submit your weekly timesheet", message: "Last week's timesheet is still in draft — submit it so planned vs actual stays accurate.", priority: "MEDIUM", sourceType: "TIMESHEET", actionUrl: "#/timesheets" },
+    { user: t2, category: "ACTION_REQUIRED", title: "Submit your weekly timesheet", message: "Last week's timesheet is still in draft — submit it so planned vs actual stays accurate.", priority: "MEDIUM", sourceType: "TIMESHEET", actionUrl: "#/timesheets" },
+    { user: t3, category: "ACTION_REQUIRED", title: "Task reassigned to you", message: "UAT defect triage ownership moved to you following the QA capacity review.", priority: "HIGH", sourceType: "TASK", actionUrl: "#/inbox" },
+    { user: t4, category: "ALERTS", title: "Regression suite exceeded window", message: "Overnight regression exceeded its scheduled window — performance scenarios were skipped.", priority: "MEDIUM", sourceType: "ALERT", actionUrl: "#/inbox" },
+    { user: pm1, category: "APPROVALS", title: "Team member availability change", message: "Noah Andersen flagged partial availability next week — rebalance the cutover rehearsal plan.", priority: "MEDIUM", sourceType: "RESOURCE", actionUrl: "#/resources" },
+    { user: pm2, category: "ALERTS", title: "Dependency at risk", message: "Upstream data-migration dependency is trending late against the recovery baseline.", priority: "HIGH", sourceType: "SCHEDULE", actionUrl: "#/raid" },
+  ];
+  for (const it of personalInbox) {
+    await db.inboxItem.create({ data: { userId: it.user.id, category: it.category, title: it.title, message: it.message, entityType: it.category === "MENTIONS" ? "Comment" : "WorkItem", priority: it.priority, actionUrl: it.actionUrl, sourceType: it.sourceType } });
+  }
+
+  // Focus planner — anchored to the CURRENT week (Mon–Fri) so the default planner
+  // view always shows seeded blocks regardless of when the seed ran.
+  const monday = startOfWeek(now);
+  const at = (weekday: number) => addDays(monday, weekday);
+  const mins = (start: string, end: string) => Math.round(((new Date(`2026-01-01T${end}:00`)).getTime() - (new Date(`2026-01-01T${start}:00`)).getTime()) / 60000);
+  const plannerDefs: { user: { id: string }; title: string; type: string; weekday: number; start: string; end: string; prio: string; project?: string }[] = [
+    { user: ceo, title: "Executive dashboard review", type: "FOCUS", weekday: 0, start: "09:00", end: "10:00", prio: "MEDIUM" },
+    { user: ceo, title: "Portfolio steering committee", type: "MEETING", weekday: 2, start: "14:00", end: "15:00", prio: "HIGH" },
+    { user: pmo, title: "PMO operations review", type: "FOCUS", weekday: 0, start: "10:00", end: "12:00", prio: "MEDIUM" },
+    { user: pmo, title: "Governance exception triage", type: "TASK", weekday: 3, start: "11:00", end: "12:00", prio: "HIGH" },
+    { user: pfmg, title: "Portfolio rebalance analysis", type: "FOCUS", weekday: 1, start: "09:00", end: "11:00", prio: "MEDIUM" },
+    { user: prgm, title: "Program delivery sync", type: "MEETING", weekday: 1, start: "14:00", end: "15:00", prio: "MEDIUM" },
+    { user: pm1, title: "Gate 2 evidence review", type: "FOCUS", weekday: 3, start: "14:00", end: "16:00", prio: "HIGH" },
+    { user: pm2, title: "Recovery plan working session", type: "TASK", weekday: 2, start: "09:00", end: "11:00", prio: "HIGH", project: "PRJ-DATA-002" },
+    { user: fin, title: "Month-end cost accruals", type: "TASK", weekday: 4, start: "09:00", end: "12:00", prio: "MEDIUM" },
+    { user: auditor, title: "Control evidence sampling", type: "TASK", weekday: 3, start: "09:00", end: "11:00", prio: "LOW" },
+    { user: t1, title: "Focus: ERP finance module configuration", type: "FOCUS", weekday: 0, start: "09:00", end: "12:00", prio: "HIGH", project: "PRJ-ERP-001" },
+    { user: t1, title: "Steering committee preparation", type: "MEETING", weekday: 1, start: "15:00", end: "16:30", prio: "MEDIUM" },
+    { user: t2, title: "Fix reconciliation extract logic", type: "TASK", weekday: 0, start: "09:00", end: "13:00", prio: "CRITICAL", project: "PRJ-DATA-002" },
+    { user: t2, title: "Domain design review", type: "MEETING", weekday: 2, start: "11:00", end: "12:00", prio: "MEDIUM" },
+    { user: t3, title: "UAT triage with QA", type: "TASK", weekday: 1, start: "10:00", end: "12:00", prio: "HIGH" },
+    { user: t4, title: "Test plan review — regulated wave", type: "FOCUS", weekday: 2, start: "13:00", end: "15:00", prio: "MEDIUM" },
   ];
   for (const pl of plannerDefs) {
-    await db.plannerEntry.create({ data: { userId: pl.user.id, projectId: pl.user.id === t1.id ? projectIds["PRJ-ERP-001"] : pl.user.id === t2.id ? projectIds["PRJ-DATA-002"] : null, title: pl.title, entryType: pl.type, date: d(pl.dayOff), startTime: pl.start, endTime: pl.end, durationMins: Math.round(((new Date(`2026-01-01T${pl.end}:00`)).getTime() - (new Date(`2026-01-01T${pl.start}:00`)).getTime()) / 60000), priority: pl.prio, status: "PLANNED", estimatedHours: 3 } });
+    await db.plannerEntry.create({ data: { userId: pl.user.id, projectId: pl.project ? projectIds[pl.project] : null, title: pl.title, entryType: pl.type, date: at(pl.weekday), startTime: pl.start, endTime: pl.end, durationMins: mins(pl.start, pl.end), priority: pl.prio, status: "PLANNED", estimatedHours: Math.round((mins(pl.start, pl.end) / 60) * 10) / 10 } });
   }
-  console.log("  ✓ Inbox, notifications, focus planner seeded for 12 users");
+  console.log("  ✓ Inbox, notifications, focus planner seeded for all", allUsers.length, "users (current-week anchored)");
 
   // ---------- 15) Final engine pass: CPM everywhere → EVM/health snapshots → governance cycle ----------
   for (const { spec, p } of projects) {
