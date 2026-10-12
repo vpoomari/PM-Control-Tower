@@ -4,6 +4,15 @@ node_modules/
 out/
 dist/
 
+# Local env / Vercel
+# `.env` holds machine-local paths — never commit it. On Vercel, env vars come
+# from the dashboard (Postgres integration + JWT_SECRET). `.env.vercel` is a
+# gitignored local convenience for testing against a hosted database.
+.env
+.env.vercel
+# Generated PostgreSQL schema variant (see scripts/prepare-vercel.mjs)
+prisma/schema.vercel.prisma
+
 # Logs & caches
 *.log
 dev.log
