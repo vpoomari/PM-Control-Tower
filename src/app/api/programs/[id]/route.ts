@@ -32,7 +32,7 @@ export const GET = withApi(async (ctx) => {
   if (!program) throw new ApiError(404, "Program not found");
 
   const owner = program.ownerId
-    ? await db.user.findUnique({ where: { id: program.ownerId }, select: { id: true, name: true, email: true, avatarColor: true } })
+    ? await db.user.findUnique({ where: { id: program.ownerId }, select: { id: true, name: true, email: true, avatarColor: true, avatarUrl: true } })
     : null;
 
   const projects = await db.project.findMany({

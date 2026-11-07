@@ -19,10 +19,10 @@ const IMPORT_PERMISSIONS: Record<string, string> = {
   requirements: "project.manage", tasks: "wbs.manage", milestones: "schedule.manage",
   resources: "resource.manage", risks: "raid.manage", issues: "raid.manage",
   assumptions: "raid.manage", changes: "change.manage", "budget-lines": "financial.manage",
-  users: "admin.users",
+  users: "admin.users", "wbs-nodes": "wbs.manage",
 };
 
-async function downloadFile(entity: string, qs: string, fallbackName: string) {
+export async function downloadFile(entity: string, qs: string, fallbackName: string) {
   const token = getToken();
   const res = await fetch(`/api/export/${entity}${qs}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},

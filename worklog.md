@@ -538,3 +538,68 @@ Work Log:
 
 Stage Summary:
 - v3.0.0 fully packaged for Windows: one-click exe + cmd toolchain zip in dist/, full app + system backups in backups/, everything SHA256-stamped
+
+---
+Task ID: 26
+Agent: main (Super Z)
+Task: PMO workspace campaign - sidebar rework, resource avatars, daily Graph email reminders, date-window fixes + AI Feature Studio (100 AI features)
+
+Work Log:
+- Sidebar rework (src/components/pmct/shell.tsx): collapsible section headers only (no accordions/dropdowns); NAV order Executive, Plan, Portfolio, Execute, Control, Strategy & Knowledge, Intelligence, Connect; sub-tabs are plain hash anchors with aria-current="page"; no logos/company names in the left sidebar; login center shows only "Control Tower" text (Optinus Solutions bottom-left, Czarnikow bottom-right); header keeps the centered Optinus x Czarnikow lockup
+- Resources tab: DiceBear avatars seeded by employeeCode || name with an initials fallback
+- Daily email reminders: Vercel Cron 08:00 UTC -> /api/cron/daily-reminders, CRON_SECRET-protected (fails closed 503), Microsoft Graph client credentials, one consolidated email per owner, dryRun=1 supported; local CRON_SECRET present, Graph vars intentionally unset (503 by design); sample rendering in backups/reminder-sample.html
+- Date-window fixes in three routes (automations overdue, executive, assistant): stored dates are TEXT (imports) or epoch ms (Prisma) and are never reformatted; window filtering happens in JS; rule documented in the FLOW workbook import doc; python scripts/verify-flow-workbook-import.py = PASS
+- AI Feature Studio spec: docs/AI-FEATURE-ROADMAP.md - all 100 features with inputs, output shape, category, priority; id = importance rank (f001 most important -> f100), 10 categories, P0/P1/P2; protocol template; 286 lucide icon names verified against lucide-react@0.525 (Cube/Podium/Screwdriver/Wishlist do not exist)
+- Studio infra (src/views/ai/features/): meta.ts (FeatureMeta/FeatureLoader/CATEGORIES/FEATURE_COUNT=100), frame.tsx (FeatureFrame, FieldDef, StudioProvider/useStudio, promptLine), catalog.ts (10-batch aggregator -> FEATURES/LOADERS), index.tsx hub (search, 11 category chips, 4 priority chips, live project select from /api/projects?take=200 with text-input fallback, lazy detail pane, honest empty state)
+- 100 components f001...f100 declared in batch-01.ts ... batch-10.ts (metas + module-scope lazy loaders - lazy() is never created during render): each 'use client', embedded SYSTEM_PROMPT whose first two lines are verbatim (senior PMO analyst / never invent project metrics), local useState, async handler with try/catch around askAIResult, rendered through FeatureFrame, verified lucide-react icon, no direct fetch/localStorage/process, explicit button trigger only
+- Arithmetic stays client-side - the model only narrates computed facts: f004 EVM, f014 PERT ((o+4m+p)/6 + sigma/variance/bounds), f016 EAC/ETC/VAC + CPI + 3 EAC methods, f023 phasing weights summing to the total, f033 cash-flow running balance + low point, f045 velocity stats, f100 ratios
+- Route + nav: registry case "ai-features" -> #/ai-features; Intelligence sub-tab "AI Feature Studio" (Wand2, perm ai.use)
+- Tests: tests/engines/ai-features.test.ts (6 fs-based structural tests - exactly 100 files f001-f100, protocol compliance per file, icon validity vs installed package, 10 batches x 10 metas in id order with loaders resolving to real files, catalog + view wiring, route + sidebar exposure); suite 137 -> 143
+- Verification: tsc --noEmit 0 errors; eslint on changed files 0 problems; npm test 143/143; FLOW_WORKBOOK_VERIFICATION=PASS; browser pass on :3000 - sidebar sub-tab aria-current=page, 100 grid cards f001...f100, 11 category + 4 priority chips, search ("sprint" -> 4 matches), category filter (Risk & RAID -> 10), empty search -> "No feature matches those filters" + Clear filters (0 / 100 shown), f100 detail frame with fields/run button/disclaimer, run -> honest BYOK fallback ("AI is not configured yet. Save your own provider API key in Administration -> Settings -> AI provider..."), live project option PRJ-CZR-FLOW, zero console errors/warnings
+- Subagent fan-out: 9 parallel batch agents (batches 03/04/10 hit the usage cap after their files were written); all 100 files verified on disk and by tsc/tests afterwards
+
+Stage Summary:
+- All 100 AI features shipped behind #/ai-features with every gate green (tsc, eslint, 143 tests, plan integrity) and browser-verified end to end; campaign (sidebar, avatars, cron reminders, date fixes) recorded, everything uncommitted in the working tree as required
+
+---
+Task ID: 27
+Agent: main (Super Z)
+Task: Date-stamped dual backup + Control Tower emblem in the left sidebar
+
+Work Log:
+- Backups via scripts/backup-app.ps1 (v3.1.0): backups/pmct-backup-20261027-084822.zip (156.8 KB - system/data: VACUUM INTO DB snapshot 1.9 MB + .env + schema + manifest) and backups/pmct-app-backup-20261027-084822.zip (295.4 MB - full source/docs/config excluding node_modules/.next/.git/dist; SHA256 F72B89AAC5C56FA2B0A1D4298F271970660D1BD508085ABC77D8F5AE236DFFC8); taken before the logo change so it archives the 100-feature studio state
+- Logo asset public/ct-logo.png: cropped the emblem (radar rings + tower, source mark bbox x545-745 / y300-1165 of the 2752x1536 lockup in C:\Users\vinod\Downloads\Gemini_Generated_Image_15jqaq15jqaq15jq.png), scaled to 174x600; a border-connected flood fill recolored the flat #201F49 background to sidebar #10243a (70531 of 104400 px, tolerance 10, connectivity-limited so the mark's near-identical dark navy was preserved)
+- Sidebar: Brand header in src/components/pmct/shell.tsx renders the emblem (h-12, decorative alt="" + aria-hidden, explicit width/height, draggable=false) immediately left of the "Control Tower" wordmark; collapsed state unchanged (toggle only); mobile drawer inherits it automatically
+- Verification: tsc 0 errors, eslint 0 problems, npm test 143/143; live DOM check - /ct-logo.png loaded (natural 174x600, rendered 14x48), zero console errors/warnings; 4x nearest-neighbor mock confirmed no visible background seam against #10243a
+
+Stage Summary:
+- Both date-stamped archives (data + full application) written to backups/, and the Control Tower emblem now sits in the left sidebar next to the wordmark, seam-free, with all gates green
+
+---
+Task ID: 28
+Agent: main (Super Z)
+Task: Enterprise User Manual (benefits, feature map, tab linkage, architecture, business case, cost, setup)
+
+Work Log:
+- New consolidated document docs/ENTERPRISE-USER-MANUAL.md (~910 lines): benefits by persona + platform-level benefits; full feature catalogue (Plan/Execute/Control/Strategy/Intelligence/Connect/Admin + 28 engines); tab-by-tab linkage tables for all 48 sidebar tabs and 8 admin areas (tab -> route -> activity -> outcome/artifact -> permission); end-to-end working design (operating loop, persona day-in-the-life, tab chaining diagram, runtime behaviour); architecture section with 10 mermaid diagrams (system context, layered architecture, deployment topology, request pipeline, auth/RBAC, realtime, AI BYOK, FLOW workbook import, cron e-mail, value chain) + data-model overview and repo layout
+- Business case (problem/solution mapping, illustrative ROI calculator with [E]/[R]/[V] notation, worked 100-user 3-year example, risks, KPI targets) and Cost (self-hosted opex + AI token maths, commercial pricing tiers from BUSINESS-PLAN Part 14, benchmark table from Part 11, 3-year TCO from Part 12) - consistent with the existing business plan, no invented figures
+- Setup section: 5 deployment modes (Docker/PM2+Bun/Windows pack/Vercel), complete env-var table from .env.example, data-init commands, first-run checklist (roles, FLOW import + integrity gate, BYOK key, Graph cron, backups), verification gates, 5-phase rollout plan; plus security/governance/ops summary and document index positioning it as doc 14 of the suite
+- Fact-checked against the live repo: 119 models, 186 API route files, 209 view modules, 43 permissions, 8 role templates (EXECUTIVE/PMO_ADMIN/PORTFOLIO_MANAGER/PROGRAM_MANAGER/PROJECT_MANAGER/FINANCE/TEAM_MEMBER/AUDITOR), 48 tabs across 8 NAV groups, cron route /api/cron/send-reminders, Reporting Center sections, engines list; mermaid syntax hardened (quoted labels, no apostrophe/colon edge cases); encoding scan clean (0 CJK), zero "Figma" occurrences
+
+Stage Summary:
+- docs/ENTERPRISE-USER-MANUAL.md delivered as the single enterprise-facing manual linking every tab to its outcome with full architecture diagrams, business case, cost model and end-to-end setup; consistent with docs/01-13 and the business plan
+
+---
+Task ID: 29
+Agent: main (Super Z)
+Task: Convert Enterprise User Manual to PDF and Word formats
+
+Work Log:
+- New reusable converter scripts/render-manual-docs.py (python-markdown, already installed - no new app deps): markdown -> two print-ready HTML variants - manual-print.html (inline mermaid SVG diagrams fitted to the page box: 673x810 px for A4, 600x800 for Word, never upscaled past natural size, break-after:avoid so captions stay with their figure) and manual-word.html (local JPEG diagrams via file URI). GitHub-style heading ids + <a name> anchors so the manual's own TOC links resolve in browser, PDF and Word; auto "dense" class for code blocks whose longest line exceeds 100 chars (shrinks to 6.2pt so ASCII box-art cannot soft-wrap and lose alignment); Figure N captions derived from the nearest preceding heading; shared print CSS (A4 @page, page-break-before on every h2, navy/teal table headers, print-color-adjust:exact, light code blocks)
+- Diagram rendering: kroki.io blocked (403 without UA, 400 with) -> mermaid.ink works, serving vector SVG (/svg) for the PDF and native-size JPEG (/img, exact viewBox dimensions, no cropping) for Word; all 10 diagrams rendered server-side, no mermaid JS needed at print time; download failure per diagram degrades to a fenced <pre> so conversion never blocks
+- PDF: Edge headless --headless --no-pdf-header-footer --print-to-pdf (31 pages, 740.3 KB, title metadata set); DOCX: Word COM Documents.Open -> SaveAs2 format 16 (37 pages, 798.5 KB) with the linked->embedded image fix (LinkFormat.SavePictureWithDocument=true + BreakLink) because Word initially saved all 10 diagrams as external file:/// links - final package verified: 10 media entries, 0 external relationships
+- QA loop with PyMuPDF page renders inspected as PNG: caught and fixed a real bug (mermaid fence tokenisation assigned tokens in REVERSE order - diagrams sat in the wrong sections), three over-wide LR flowcharts converted to TB in the source manual (4.3 tab chain, 5.5 auth, 5.8 FLOW import - they rendered as unreadable 97px strips), cover meta lines merging into one paragraph (missing blank lines in markdown), negative-origin viewBox parsing (-50 -10 ...) that left 4 sequence diagrams unsized, and figure/caption page splits
+- Source edits to docs/ENTERPRISE-USER-MANUAL.md: paragraph spacing on the cover + 3 mermaid orientation changes (LR->TB) - content unchanged; deliverables docs/ENTERPRISE-USER-MANUAL.pdf and docs/ENTERPRISE-USER-MANUAL.docx opened/verified (page count, figure order ascending 11->20, tables, embedded images)
+
+Stage Summary:
+- Manual now ships as PDF (31 pp, vector diagrams) and Word (37 pp, embedded images, heading styles + navigation) alongside the markdown master; reusable script can render any doc in the 01-13 suite the same way; docs/script/binaries only - no TS touched, gates remain at the 143-test green baseline

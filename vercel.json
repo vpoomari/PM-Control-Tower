@@ -2,5 +2,19 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "npm install",
-  "buildCommand": "node scripts/vercel-db.mjs setup && next build"
+  "buildCommand": "node scripts/vercel-db.mjs setup && next build",
+  "crons": [
+    {
+      "path": "/api/cron/send-reminders",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/task-alerts",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/agents",
+      "schedule": "15 * * * *"
+    }
+  ]
 }

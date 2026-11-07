@@ -17,6 +17,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ProjectPicker, useControlProjectOptions } from "@/views/control/shared/pickers";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import { customFieldColumns } from "@/components/fields/custom-columns";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
 import { AlertTriangle, Plus } from "lucide-react";
 
 interface ChangeRequest {
@@ -65,6 +68,9 @@ export default function ChangesView() {
   const [rejectReason, setRejectReason] = useState("");
 
   const rows = (changes.data?.changes ?? []).filter((c) => projectFilter === "all" || c.projectId === projectFilter);
+
+  // --- Field Dictionary: assignments + bulk values for the visible change requests ---
+  const fields = useModuleFieldsHandle("change_request", rows.map((r) => r.id));
 
   const doTransition = async (id: string, body: Record<string, string>) => {
     setTransitioning(true);
@@ -125,6 +131,11 @@ export default function ChangesView() {
     { key: "riskImpact", header: "Risk", render: (c) => <StatusChip status={c.riskImpact} /> },
     { key: "decision", header: "Decision", render: (c) => c.decision ? <StatusChip status={c.decision} /> : <span className="text-slate-400 text-xs">—</span> },
     { key: "decidedAt", header: "Decided", render: (c) => <span className="text-xs tabular-nums text-slate-500">{c.decisionDate ? fmtDate(c.decisionDate) : "—"}</span> },
+    // Field Dictionary: dynamic columns for any field flagged "in table"
+    ...customFieldColumns<ChangeRequest>(fields.tableColumns, fields.values),
+    { key: "cf", header: "", className: "w-10", render: (c) => (
+      <RecordFieldsButton moduleKey="change_request" recordId={c.id} label={c.code} onSaved={fields.refetch} />
+    ) },
   ];
 
   const d = detail.data;
@@ -136,7 +147,10 @@ export default function ChangesView() {
         title="Change Control"
         subtitle="Governed change requests — impact assessed, decided and recorded before anything moves."
         breadcrumb={["Home", "Control", "Change Control"]}
-        actions={<Button size="sm" onClick={() => { setForm((p) => ({ ...p, projectId: projectFilter !== "all" ? projectFilter : "" })); setNewOpen(true); }}><Plus className="h-4 w-4 mr-1.5" />New change request</Button>}
+        actions={<>
+          {fields.actions}
+          <Button size="sm" onClick={() => { setForm((p) => ({ ...p, projectId: projectFilter !== "all" ? projectFilter : "" })); setNewOpen(true); }}><Plus className="h-4 w-4 mr-1.5" />New change request</Button>
+        </>}
       />
 
       <Toolbar>

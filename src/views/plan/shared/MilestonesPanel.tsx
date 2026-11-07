@@ -12,8 +12,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { dayNum, fmtDate } from "@/lib/constants";
-import { Flag, CalendarClock, AlertTriangle, CheckCircle2, Plus, Trash2 } from "lucide-react";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import { customFieldColumns } from "@/components/fields/custom-columns";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Flag, CalendarClock, AlertTriangle, CheckCircle2, Plus, Pencil, Trash2 } from "lucide-react";
 interface Milestone {
+  [key: string]: unknown;
   id: string;
   code: string;
   name: string;
@@ -26,30 +31,56 @@ interface Milestone {
 }
 interface MilestonesBundle { projectId: string; items: Milestone[]; overdue: number; total: number }
 
+const MILESTONE_STATUSES = ["PENDING", "IN_PROGRESS", "AT_RISK", "COMPLETED", "CANCELLED"];
+interface MilestoneForm { name: string; dueDate: string; baselineDate: string; isCritical: boolean; description: string; status: string }
+const EMPTY_MS_FORM: MilestoneForm = { name: "", dueDate: "", baselineDate: "", isCritical: false, description: "", status: "PENDING" };
+const day = (d?: string | null) => (d ? new Date(d).toISOString().slice(0, 10) : "");
+
 export default function MilestonesPanel({ projectId }: { projectId: string }) {
   const ms = useApi<MilestonesBundle>(`/api/projects/${projectId}/milestones`);
   useRealtimeRefetch(ms.refetch, ["milestone:changed", "project:updated"]);
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null); // null = create mode
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: "", dueDate: "", baselineDate: "", isCritical: false, description: "" });
+  const [form, setForm] = useState<MilestoneForm>({ ...EMPTY_MS_FORM });
 
-  const create = async () => {
+  const openCreate = () => { setEditingId(null); setForm({ ...EMPTY_MS_FORM }); setOpen(true); };
+  const openEdit = (m: Milestone) => {
+    setEditingId(m.id);
+    setForm({ name: m.name, dueDate: day(m.dueDate), baselineDate: day(m.baselineDate), isCritical: m.isCritical, description: m.description ?? "", status: m.status });
+    setOpen(true);
+  };
+
+  const save = async () => {
     if (form.name.trim().length < 1) { toast.error("Milestone name is required"); return; }
     setSaving(true);
     try {
-      await api.post(`/api/projects/${projectId}/milestones`, {
+      const payload = {
         name: form.name.trim(),
         dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : undefined,
         baselineDate: form.baselineDate ? new Date(form.baselineDate).toISOString() : undefined,
         isCritical: form.isCritical,
         description: form.description.trim() || null,
-      });
-      toast.success("Milestone created");
+        status: form.status,
+      };
+      if (editingId) {
+        // edit: empty dates clear the value (nullable PATCH fields)
+        await api.patch(`/api/projects/${projectId}/milestones/${editingId}`, {
+          ...payload,
+          dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : null,
+          baselineDate: form.baselineDate ? new Date(form.baselineDate).toISOString() : null,
+        });
+        toast.success("Milestone updated");
+      } else {
+        await api.post(`/api/projects/${projectId}/milestones`, payload);
+        toast.success("Milestone created");
+      }
       setOpen(false);
-      setForm({ name: "", dueDate: "", baselineDate: "", isCritical: false, description: "" });
+      setEditingId(null);
+      setForm({ ...EMPTY_MS_FORM });
       await ms.refetch();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to create milestone");
+      toast.error(e instanceof Error ? e.message : "Failed to save milestone");
     } finally {
       setSaving(false);
     }
@@ -79,6 +110,10 @@ export default function MilestonesPanel({ projectId }: { projectId: string }) {
   const completed = items.filter((m) => m.status === "COMPLETED").length;
   const overdue = ms.data?.overdue ?? 0;
 
+  // --- Field Dictionary: assignments + bulk values for the visible milestones ---
+  const fields = useModuleFieldsHandle("milestone", items.map((m) => m.id));
+  const cfCols = customFieldColumns<Milestone>(fields.tableColumns, fields.values);
+
   const variance = (m: Milestone): number | null => {
     if (!m.dueDate || !m.baselineDate) return null;
     return Math.round((dayNum(m.dueDate) - dayNum(m.baselineDate)));
@@ -95,8 +130,13 @@ export default function MilestonesPanel({ projectId }: { projectId: string }) {
 
       <SectionCard
         title="Milestone timeline"
-        description="Variance = forecast due date minus baseline date (positive = slip)"
-        actions={<Button size="sm" className="h-8" onClick={() => setOpen(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Add milestone</Button>}
+        description={`Variance = forecast due date minus baseline date (positive = slip) · double-click a row to edit`}
+        actions={(
+          <>
+            {fields.actions}
+            <Button size="sm" className="h-8" onClick={openCreate}><Plus className="h-3.5 w-3.5 mr-1" /> Add milestone</Button>
+          </>
+        )}
       >
         {ms.loading ? <LoadingBlock label="Loading milestones…" />
           : ms.error ? <ErrorBlock message={ms.error} onRetry={ms.refetch} />
@@ -117,6 +157,7 @@ export default function MilestonesPanel({ projectId }: { projectId: string }) {
                     <th className="px-3 py-2.5 font-medium text-right">Variance</th>
                     <th className="px-3 py-2.5 font-medium">Status</th>
                     <th className="px-3 py-2.5 font-medium">Flags</th>
+                    {cfCols.map((c) => <th key={c.key} className="px-3 py-2.5 font-medium">{c.header}</th>)}
                     <th className="px-3 py-2.5 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
@@ -124,7 +165,7 @@ export default function MilestonesPanel({ projectId }: { projectId: string }) {
                   {items.map((m) => {
                     const v = variance(m);
                     return (
-                      <tr key={m.id} className="border-b border-slate-100 last:border-0 hover:bg-blue-50/40">
+                      <tr key={m.id} onDoubleClick={() => openEdit(m)} title="Double-click to edit" className="border-b border-slate-100 last:border-0 hover:bg-blue-50/40">
                         <td className="px-3 py-2 font-mono text-xs text-slate-500 whitespace-nowrap">{m.code}</td>
                         <td className="px-3 py-2">
                           <p className="font-medium text-slate-800">{m.name}</p>
@@ -144,7 +185,12 @@ export default function MilestonesPanel({ projectId }: { projectId: string }) {
                           {m.isCritical && <span className="inline-flex items-center rounded-full bg-red-50 border border-red-200 px-1.5 py-0.5 text-[10px] font-medium text-red-700">Critical</span>}
                           {!m.isCritical && <span className="text-slate-400 text-xs">—</span>}
                         </td>
-                        <td className="px-3 py-2 text-right whitespace-nowrap">
+                        {cfCols.map((c) => <td key={c.key} className="px-3 py-2 text-slate-700 align-middle">{c.render?.(m)}</td>)}
+                        <td className="px-3 py-2 text-right whitespace-nowrap" onDoubleClick={(e) => e.stopPropagation()}>
+                          <RecordFieldsButton moduleKey="milestone" recordId={m.id} label={m.code} onSaved={fields.refetch} />
+                          <Button variant="ghost" size="icon" className="h-7 w-7 mr-0.5" aria-label={`Edit ${m.code}`} title="Edit (or double-click the row)" onClick={() => openEdit(m)}>
+                            <Pencil className="h-3.5 w-3.5 text-slate-500" />
+                          </Button>
                           {m.status !== "COMPLETED" && (
                             <Button variant="outline" size="sm" className="h-7 mr-1" onClick={() => complete(m)}>
                               <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-600" /> Complete
@@ -165,9 +211,9 @@ export default function MilestonesPanel({ projectId }: { projectId: string }) {
           )}
       </SectionCard>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditingId(null); }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Add milestone</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? "Edit milestone" : "Add milestone"}</DialogTitle></DialogHeader>
           <div className="grid gap-3 py-1">
             <div className="grid gap-1.5">
               <Label htmlFor="ms-name">Name</Label>
@@ -183,6 +229,13 @@ export default function MilestonesPanel({ projectId }: { projectId: string }) {
                 <Input id="ms-baseline" type="date" value={form.baselineDate} onChange={(e) => setForm({ ...form, baselineDate: e.target.value })} />
               </div>
             </div>
+            <div className="grid gap-1.5">
+              <Label>Status</Label>
+              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{MILESTONE_STATUSES.map((s) => <SelectItem key={s} value={s}>{s.replace("_", " ")}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input type="checkbox" checked={form.isCritical} onChange={(e) => setForm({ ...form, isCritical: e.target.checked })} className="rounded border-slate-300" />
               Business-critical milestone
@@ -194,7 +247,7 @@ export default function MilestonesPanel({ projectId }: { projectId: string }) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={create} disabled={saving}>{saving ? "Creating…" : "Create milestone"}</Button>
+            <Button onClick={save} disabled={saving}>{saving ? "Saving…" : editingId ? "Save changes" : "Create milestone"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

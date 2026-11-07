@@ -17,6 +17,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProjectPicker, useControlProjectId, useControlProjectOptions } from "@/views/control/shared/pickers";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import { customFieldColumns } from "@/components/fields/custom-columns";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
 import { Plus, Pencil, Trash2, ArrowRight } from "lucide-react";
 
 const RISK_CATEGORIES = ["TECHNICAL", "COMMERCIAL", "FINANCIAL", "OPERATIONAL", "REGULATORY", "RESOURCE", "EXTERNAL", "OTHER"] as const;
@@ -25,7 +28,7 @@ const STRATEGIES = ["MITIGATE", "AVOID", "TRANSFER", "ACCEPT", "MONITOR", "ESCAL
 const ISSUE_CATEGORIES = ["TECHNICAL", "COMMERCIAL", "FINANCIAL", "OPERATIONAL", "REGULATORY", "RESOURCE", "QUALITY", "VENDOR", "OTHER"] as const;
 const ISSUE_STATUSES = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"] as const;
 const ISSUE_SEVERITY = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
-const ASSUMPTION_STATUSES = ["VALID", "AT_RISK", "INVALID", "CLOSED"] as const;
+const ASSUMPTION_STATUSES = ["TO_VALIDATE", "VALID", "AT_RISK", "INVALID", "CLOSED"] as const;
 
 interface Risk {
   [key: string]: unknown;
@@ -74,6 +77,11 @@ export default function RaidView() {
   const assumptions = useApi<{ assumptions: Assumption[] }>(projectId ? `/api/assumptions?projectId=${projectId}` : null);
   const dependencies = useApi<{ items: Dependency[] }>(projectId && tab === "dependencies" ? `/api/projects/${projectId}/dependencies` : null);
   useRealtimeRefetch(() => { void refreshRaid(); }, ["raid:changed"]);
+
+  // --- Field Dictionary: assignments + bulk values for the visible rows per module ---
+  const riskFields = useModuleFieldsHandle("risk", (risks.data?.risks ?? []).map((r) => r.id));
+  const issueFields = useModuleFieldsHandle("issue", (issues.data?.issues ?? []).map((i) => i.id));
+  const asmFields = useModuleFieldsHandle("assumption", (assumptions.data?.assumptions ?? []).map((a) => a.id));
 
   const selected = options.find((o) => o.id === projectId);
 
@@ -221,6 +229,7 @@ export default function RaidView() {
       openRisks: r.filter((x) => x.status !== "CLOSED").length,
       critical: r.filter((x) => x.severity === "CRITICAL" && x.status !== "CLOSED").length,
       openIssues: i.filter((x) => !["RESOLVED", "CLOSED"].includes(x.status)).length,
+      toValidate: a.filter((x) => x.status === "TO_VALIDATE").length,
       atRisk: a.filter((x) => x.status === "AT_RISK").length,
     };
   }, [risks.data, issues.data, assumptions.data]);
@@ -245,6 +254,11 @@ export default function RaidView() {
     { key: "strategy", header: "Strategy", render: (r) => <span className="text-xs text-slate-500">{r.responseStrategy.toLowerCase()}</span> },
     { key: "due", header: "Due", render: (r) => <span className="tabular-nums text-slate-500">{fmtDate(r.dueDate)}</span> },
     { key: "escalation", header: "Escalation", render: (r) => <span className="text-xs text-slate-400">{r.escalationLevel.toLowerCase()}</span> },
+    // Field Dictionary: dynamic columns for any field flagged "in table"
+    ...customFieldColumns<Risk>(riskFields.tableColumns, riskFields.values),
+    { key: "cf", header: "", className: "w-10", render: (r) => (
+      <RecordFieldsButton moduleKey="risk" recordId={r.id} label={r.code} onSaved={riskFields.refetch} />
+    ) },
     { key: "actions", header: "", className: "w-20", render: (r) => (
       <div className="flex items-center gap-1">
         <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit ${r.code}`} onClick={(e) => { e.stopPropagation(); openRiskDialog("edit", r); }}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -271,6 +285,11 @@ export default function RaidView() {
     { key: "owner", header: "Owner", render: (i) => <span className="text-slate-600">{i.ownerName || "—"}</span> },
     { key: "due", header: "Due", render: (i) => <span className="tabular-nums text-slate-500">{fmtDate(i.dueDate)}</span> },
     { key: "resolution", header: "Resolution", className: "max-w-40", render: (i) => <span className="text-xs text-slate-500 truncate block">{i.resolution || "—"}</span> },
+    // Field Dictionary: dynamic columns for any field flagged "in table"
+    ...customFieldColumns<Issue>(issueFields.tableColumns, issueFields.values),
+    { key: "cf", header: "", className: "w-10", render: (i) => (
+      <RecordFieldsButton moduleKey="issue" recordId={i.id} label={i.code} onSaved={issueFields.refetch} />
+    ) },
     { key: "actions", header: "", className: "w-20", render: (i) => (
       <div className="flex items-center gap-1">
         <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit ${i.code}`} onClick={(e) => { e.stopPropagation(); openIssueDialog("edit", i); }}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -293,6 +312,11 @@ export default function RaidView() {
     { key: "owner", header: "Owner", render: (a) => <span className="text-slate-600">{a.ownerName || "—"}</span> },
     { key: "validationDate", header: "Validated", render: (a) => <span className="tabular-nums text-slate-500">{fmtDate(a.validationDate)}</span> },
     { key: "due", header: "Review by", render: (a) => <span className="tabular-nums text-slate-500">{fmtDate(a.dueDate)}</span> },
+    // Field Dictionary: dynamic columns for any field flagged "in table"
+    ...customFieldColumns<Assumption>(asmFields.tableColumns, asmFields.values),
+    { key: "cf", header: "", className: "w-10", render: (a) => (
+      <RecordFieldsButton moduleKey="assumption" recordId={a.id} label={a.code} onSaved={asmFields.refetch} />
+    ) },
     { key: "actions", header: "", className: "w-20", render: (a) => (
       <div className="flex items-center gap-1">
         <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit ${a.code}`} onClick={(e) => { e.stopPropagation(); openAsmDialog("edit", a); }}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -315,13 +339,19 @@ export default function RaidView() {
         title="RAID Console"
         subtitle="Risks, assumptions, issues and dependencies — one governed log per project."
         breadcrumb={["Home", "Control", "RAID"]}
-        actions={<ProjectPicker value={projectId} onChange={setProjectId} options={options} />}
+        actions={
+          <>
+            {tab === "risks" ? riskFields.actions : tab === "issues" ? issueFields.actions : tab === "assumptions" ? asmFields.actions : null}
+            <ProjectPicker value={projectId} onChange={setProjectId} options={options} />
+          </>
+        }
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <SectionCard bodyClass="p-4"><p className="text-xs uppercase text-slate-400">Open risks</p><p className="text-2xl font-semibold text-slate-900 tabular-nums">{summary.openRisks}</p></SectionCard>
         <SectionCard bodyClass="p-4"><p className="text-xs uppercase text-slate-400">Critical severity</p><p className="text-2xl font-semibold text-red-600 tabular-nums">{summary.critical}</p></SectionCard>
         <SectionCard bodyClass="p-4"><p className="text-xs uppercase text-slate-400">Open issues</p><p className="text-2xl font-semibold text-amber-600 tabular-nums">{summary.openIssues}</p></SectionCard>
+        <SectionCard bodyClass="p-4"><p className="text-xs uppercase text-slate-400">To validate</p><p className="text-2xl font-semibold text-blue-700 tabular-nums">{summary.toValidate}</p></SectionCard>
         <SectionCard bodyClass="p-4"><p className="text-xs uppercase text-slate-400">Assumptions at risk</p><p className="text-2xl font-semibold text-slate-900 tabular-nums">{summary.atRisk}</p></SectionCard>
       </div>
 
@@ -347,11 +377,11 @@ export default function RaidView() {
           firstError && !(risks.data || issues.data || assumptions.data) ? <ErrorBlock message={firstError} onRetry={() => void refreshRaid()} /> : (
             <>
               {tab === "risks" && (risks.error ? <ErrorBlock message={risks.error} onRetry={risks.refetch} /> :
-                <DataTable columns={riskColumns} rows={risks.data?.risks ?? []} keyField="id" emptyTitle="No risks registered" emptyDescription="A clean log is good news — register new risks as they emerge." maxHeight="36rem" />)}
+                <DataTable columns={riskColumns} rows={risks.data?.risks ?? []} keyField="id" onRowDoubleClick={(r) => openRiskDialog("edit", r)} emptyTitle="No risks registered" emptyDescription="A clean log is good news — register new risks as they emerge." maxHeight="36rem" />)}
               {tab === "issues" && (issues.error ? <ErrorBlock message={issues.error} onRetry={issues.refetch} /> :
-                <DataTable columns={issueColumns} rows={issues.data?.issues ?? []} keyField="id" emptyTitle="No issues logged" emptyDescription="Issues raised through monitoring will appear here." maxHeight="36rem" />)}
+                <DataTable columns={issueColumns} rows={issues.data?.issues ?? []} keyField="id" onRowDoubleClick={(i) => openIssueDialog("edit", i)} emptyTitle="No issues logged" emptyDescription="Issues raised through monitoring will appear here." maxHeight="36rem" />)}
               {tab === "assumptions" && (assumptions.error ? <ErrorBlock message={assumptions.error} onRetry={assumptions.refetch} /> :
-                <DataTable columns={asmColumns} rows={assumptions.data?.assumptions ?? []} keyField="id" emptyTitle="No assumptions recorded" maxHeight="36rem" />)}
+                <DataTable columns={asmColumns} rows={assumptions.data?.assumptions ?? []} keyField="id" onRowDoubleClick={(a) => openAsmDialog("edit", a)} emptyTitle="No assumptions recorded" maxHeight="36rem" />)}
               {tab === "dependencies" && (dependencies.loading && !dependencies.data ? <LoadingBlock /> :
                 dependencies.error ? <ErrorBlock message={dependencies.error} onRetry={dependencies.refetch} /> :
                   (dependencies.data?.items ?? []).length === 0 ? <EmptyState title="No dependencies mapped" /> : (

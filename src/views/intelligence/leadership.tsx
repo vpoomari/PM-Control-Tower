@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useApi, useRealtimeRefetch } from "@/lib/client";
 import {
-  PageHeader, Button, Badge, cn,
+  PageHeader, Button, Badge, LiveBadge, cn,
 } from "@/components/pmct/kit";
 import type { LeadershipBundle, ProjectStatusReport } from "@/lib/engines/leadership";
 import {
@@ -56,7 +56,13 @@ export default function LeadershipView() {
   const bundle = useApi<LeadershipBundle>("/api/reports/leadership");
   const [tab, setTab] = useState("tower");
   const [statusProjectId, setStatusProjectId] = useState<string | null>(null);
-  useRealtimeRefetch(bundle.refetch, ["report:generated", "governance:changed"]);
+  // Broad live set: any feed that moves the bundle (health, actuals, RAID, schedule,
+  // reports, decisions/actions/gates) triggers a recompile.
+  useRealtimeRefetch(bundle.refetch, [
+    "report:generated", "governance:changed", "project:health", "project:updated",
+    "actuals:changed", "evm:changed", "raid:changed", "schedule:changed",
+    "change:changed", "alert:created", "milestone:changed",
+  ]);
 
   const d = bundle.data;
 
@@ -122,6 +128,7 @@ export default function LeadershipView() {
         subtitle={d ? `Decision-ready intelligence from the single source of truth — ${d.tower.totalProjects} projects, baseline ${d.sinceLabel}. Exceptions first.` : "Decision-ready intelligence from the single source of truth."}
         actions={
           <>
+            <LiveBadge at={d?.generatedAt} />
             <Button variant="outline" size="sm" onClick={bundle.refetch}><RefreshCw className="h-4 w-4 mr-1.5" /> Refresh</Button>
             <Button size="sm" onClick={() => setTab("meeting")}><Presentation className="h-4 w-4 mr-1.5" /> Meeting Mode</Button>
           </>

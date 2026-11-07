@@ -1,19 +1,13 @@
 "use client";
-// PM CONTROL TOWER — Authentication view. Original brand identity; no third-party UI.
+// PM CONTROL TOWER — secure sign-in. Product title centered; partner identities
+// are balanced at the lower left/right. No Control Tower image or left promo panel.
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, ShieldCheck, TowerControl, Lock, Mail } from "lucide-react";
-
-const BENEFITS = [
-  "Strategic alignment across portfolios",
-  "Real-time visibility on delivery health",
-  "Optimized resource utilization",
-  "Proactive risk management",
-  "Data-driven executive decisions",
-];
+import { Loader2, ShieldCheck, Lock, Mail } from "lucide-react";
+import { BRAND_ASSETS } from "@/components/pmct/brand";
 
 export function LoginView({ onLogin }: { onLogin: (email: string, password: string) => Promise<void> }) {
   const [email, setEmail] = useState("");
@@ -34,97 +28,98 @@ export function LoginView({ onLogin }: { onLogin: (email: string, password: stri
     }
   };
 
-  const demo = (e: string) => { setEmail(e); setPassword("Pmct@2026"); };
+  const demo = (value: string) => { setEmail(value); setPassword("Pmct@2026"); };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-white">
-      {/* Brand panel */}
-      <div className="relative lg:w-[46%] bg-[#0b1f3a] text-white px-8 py-12 lg:px-14 lg:py-0 flex flex-col justify-center overflow-hidden">
-        <div className="absolute -top-24 -right-24 h-80 w-80 rounded-full bg-blue-600/20 blur-3xl" />
-        <div className="absolute bottom-0 left-0 h-64 w-64 rounded-full bg-sky-500/10 blur-3xl" />
-        <div className="relative">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-500 to-sky-400 flex items-center justify-center shadow-lg">
-              <TowerControl className="h-6 w-6" />
+    <main className="ct-login relative isolate flex min-h-screen flex-col overflow-hidden bg-[#f3f6fa] text-slate-900 selection:bg-sky-100">
+      {/* Quiet ambient light and a low-contrast grid create depth without a promotional side panel. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-48 left-1/2 h-[34rem] w-[48rem] -translate-x-1/2 rounded-full opacity-50 blur-3xl" style={{ background: "radial-gradient(ellipse, rgba(42,170,222,.15), rgba(255,255,255,0) 68%)" }} />
+        <div className="absolute inset-0 opacity-[0.18]" style={{ backgroundImage: "linear-gradient(rgba(15,35,60,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(15,35,60,.035) 1px, transparent 1px)", backgroundSize: "48px 48px", maskImage: "linear-gradient(to bottom, black, transparent 75%)" }} />
+      </div>
+
+      <section className="flex flex-1 items-center justify-center px-5 py-12 sm:px-8 sm:py-16">
+        <div className="w-full max-w-[430px]">
+          {/* Center identity: product name only, deliberately text-only. */}
+          <header className="mb-8 text-center">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">Enterprise project management</p>
+            <h1 className="mt-3 text-[2.45rem] font-semibold leading-none tracking-[-0.055em] text-[#10243a] sm:text-[2.8rem]">Control Tower</h1>
+            <div aria-hidden="true" className="mx-auto mt-5 h-[3px] w-12 rounded-full bg-gradient-to-r from-[#087faf] to-[#2aaade]" />
+          </header>
+
+          <section className="rounded-2xl border border-slate-200/80 bg-white/95 p-6 shadow-[0_24px_70px_-35px_rgba(16,36,58,.28)] ring-1 ring-white sm:p-8" aria-labelledby="sign-in-heading">
+            <div className="mb-6">
+              <h2 id="sign-in-heading" className="text-lg font-semibold tracking-tight text-slate-900">Sign in</h2>
+              <p className="mt-1 text-sm text-slate-500">Use your work account to access the secure workspace.</p>
             </div>
-            <div className="leading-tight">
-              <p className="font-bold tracking-wide text-lg">PM CONTROL TOWER</p>
-              <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Enterprise PPM Platform</p>
-            </div>
-          </div>
-          <h1 className="text-3xl lg:text-4xl font-semibold leading-tight tracking-tight">
-            One platform.<br />Complete project intelligence.<br />
-            <span className="bg-gradient-to-r from-sky-300 to-blue-400 bg-clip-text text-transparent">Greater outcomes.</span>
-          </h1>
-          <p className="mt-4 text-sm text-slate-300 max-w-md leading-relaxed">
-            Portfolio → Program → Project → Delivery — one source of truth for scope, schedule, resources,
-            cost, EVM, risk and governance.
+
+            <form onSubmit={submit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-xs font-medium text-slate-700">Work email</Label>
+                <div className="relative">
+                  <Mail aria-hidden="true" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  {/* Password managers/SSO extensions inject attributes before hydration. */}
+                  <Input id="email" type="email" required autoComplete="email" suppressHydrationWarning className="h-11 rounded-lg border-slate-200 bg-white pl-10 text-sm shadow-none focus-visible:ring-[#087faf]/30"
+                    value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-xs font-medium text-slate-700">Password</Label>
+                <div className="relative">
+                  <Lock aria-hidden="true" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input id="password" type="password" required autoComplete="current-password" suppressHydrationWarning className="h-11 rounded-lg border-slate-200 bg-white pl-10 text-sm shadow-none focus-visible:ring-[#087faf]/30"
+                    value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" />
+                </div>
+              </div>
+              {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs leading-relaxed text-red-700">{error}</div>}
+              <Button type="submit" disabled={busy} className="mt-1 h-11 w-full rounded-lg bg-[#087faf] text-sm font-semibold shadow-sm transition-colors hover:bg-[#06698f] focus-visible:ring-2 focus-visible:ring-[#087faf]/40 focus-visible:ring-offset-2">
+                {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                {busy ? "Authenticating…" : "Sign in securely"}
+              </Button>
+            </form>
+
+            <details className="group mt-6 border-t border-slate-100 pt-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-[11px] font-medium text-slate-500 outline-none transition-colors hover:text-slate-800 focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[#087faf]/40 [&::-webkit-details-marker]:hidden">
+                Sandbox demo access
+                <span aria-hidden="true" className="text-slate-400 transition-transform group-open:rotate-180">⌄</span>
+              </summary>
+              <div className="pt-3">
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: "Executive", email: "ceo@pmct.io" },
+                    { label: "PMO Admin", email: "pmo@pmct.io" },
+                    { label: "Project Manager", email: "pm.sarah@pmct.io" },
+                    { label: "Team Member", email: "liam@pmct.io" },
+                  ].map((demoUser) => (
+                    <button key={demoUser.email} type="button" onClick={() => demo(demoUser.email)}
+                      className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2 text-left transition-colors hover:border-sky-300 hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087faf]/40">
+                      <span className="block text-[11px] font-medium text-slate-700">{demoUser.label}</span>
+                      <span className="mt-0.5 block truncate text-[10px] text-slate-400">{demoUser.email}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2.5 text-[10px] leading-relaxed text-slate-400">Password: Pmct@2026 · Sandbox only; rotate before production.</p>
+              </div>
+            </details>
+          </section>
+
+          <p className="mt-5 flex items-center justify-center gap-1.5 text-[10px] text-slate-400">
+            <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5" /> Protected enterprise workspace
           </p>
-          <ul className="mt-8 space-y-2.5">
-            {BENEFITS.map((b) => (
-              <li key={b} className="flex items-center gap-2.5 text-sm text-slate-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0" />
-                {b}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-10 text-[10px] uppercase tracking-[0.18em] text-slate-500">Plan · Execute · Monitor · Govern · Deliver</p>
         </div>
-      </div>
+      </section>
 
-      {/* Form panel */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm">
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Sign in</h2>
-          <p className="text-sm text-slate-500 mt-1">Access your enterprise project control tower.</p>
-
-          <form onSubmit={submit} className="mt-8 space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Work email</Label>
-              <div className="relative">
-                <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-                <Input id="email" type="email" required autoComplete="email" className="pl-8 h-10"
-                  value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-                <Input id="password" type="password" required autoComplete="current-password" className="pl-8 h-10"
-                  value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-              </div>
-            </div>
-            {error && (
-              <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">{error}</div>
-            )}
-            <Button type="submit" disabled={busy} className="w-full h-10 bg-blue-600 hover:bg-blue-700">
-              {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
-              {busy ? "Authenticating…" : "Sign in securely"}
-            </Button>
-          </form>
-
-          <div className="mt-8 rounded-lg border border-slate-200 bg-slate-50 p-3.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">Demo roles (sandbox)</p>
-            <div className="grid grid-cols-2 gap-1.5">
-              {[
-                { label: "Executive", email: "ceo@pmct.io" },
-                { label: "PMO Admin", email: "pmo@pmct.io" },
-                { label: "Project Mgr", email: "pm.sarah@pmct.io" },
-                { label: "Team Member", email: "liam@pmct.io" },
-              ].map((d) => (
-                <button key={d.email} type="button" onClick={() => demo(d.email)}
-                  className="text-left rounded-md border border-slate-200 bg-white px-2.5 py-1.5 hover:border-blue-300 hover:bg-blue-50/50 transition-colors">
-                  <span className="block text-[11px] font-medium text-slate-700">{d.label}</span>
-                  <span className="block text-[10px] text-slate-400">{d.email}</span>
-                </button>
-              ))}
-            </div>
-            <p className="text-[10px] text-slate-400 mt-2">Password: Pmct@2026 — sandbox only, rotate before production.</p>
-          </div>
+      {/* Separate partner identities, aligned to opposite sides of the footer. */}
+      <footer className="relative mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-5 pb-5 pt-2 sm:gap-6 sm:px-10 sm:pb-7 lg:px-14">
+        <div className="flex min-h-10 items-center" aria-label="Optinus Solutions">
+          <img src={BRAND_ASSETS.optinusLightSurface} alt="Optinus Solutions" className="h-auto w-[150px] object-contain object-left sm:w-[205px]" />
         </div>
-      </div>
-    </div>
+        <div className="flex min-h-10 items-center gap-2 sm:gap-2.5" aria-label="Czarnikow Group">
+          <img src={BRAND_ASSETS.czarnikow} alt="Czarnikow Group logo" className="h-7 w-7 rounded-md object-contain sm:h-9 sm:w-9" />
+          <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-600 sm:text-[11px] sm:tracking-[0.18em]">Czarnikow Group</span>
+        </div>
+      </footer>
+    </main>
   );
 }
 

@@ -20,11 +20,15 @@ import {
 import {
   DAY_HEADERS, ProjectSelect, TaskSelect, WeekNav, hasPerm, useMe, useProjectOptions, weekLabel,
 } from "@/views/execute/shared/pickers";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import { customFieldColumns } from "@/components/fields/custom-columns";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
 import { Trash2, Plus, Send, Save, Lock, ClipboardCheck, CalendarDays } from "lucide-react";
 
 // ---- Types (mirror API payloads) ----
 interface TSResourceLite { id: string; name: string; employeeCode: string; department: string }
 interface TSListItem {
+  [key: string]: unknown;
   id: string; resourceId: string; resource: TSResourceLite; userId: string | null;
   weekStart: string; weekEnd: string; status: string;
   totalHours: number; regularHours: number; overtimeHours: number;
@@ -109,6 +113,13 @@ export default function TimesheetsView() {
     const rows = list.data?.timesheets ?? [];
     return statusTab === "ALL" ? rows : rows.filter((t) => t.status === statusTab);
   }, [list.data, statusTab]);
+
+  // --- Field Dictionary: assignments + bulk values for the timesheet register ---
+  const tsFields = useModuleFieldsHandle("timesheet", (list.data?.timesheets ?? []).map((t) => t.id));
+  const tsCustomCols = useMemo(
+    () => customFieldColumns<TSListItem>(tsFields.tableColumns, tsFields.values),
+    [tsFields.tableColumns, tsFields.values],
+  );
 
   // ---- My timesheet for the selected week ----
   const mineForWeek = useMemo(() => {
@@ -370,7 +381,12 @@ export default function TimesheetsView() {
         title="Timesheets"
         subtitle="Capture effort, submit for approval and govern the actuals that feed cost, EVM and health."
         breadcrumb={["Home", "Execute", "Timesheets"]}
-        actions={<WeekNav weekStart={weekStart} onChange={(d) => { setWeekStart(d); setLoadedTsId(null); }} />}
+        actions={
+          <>
+            {tsFields.actions}
+            <WeekNav weekStart={weekStart} onChange={(d) => { setWeekStart(d); setLoadedTsId(null); }} />
+          </>
+        }
       />
 
       {/* MY TIMESHEET */}
@@ -633,9 +649,13 @@ export default function TimesheetsView() {
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-[1]">
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  {["Resource", "Week", "Status", "Total", "Regular", "Overtime", "Billable", "Entries", "Approver", ""].map((h) => (
+                  {["Resource", "Week", "Status", "Total", "Regular", "Overtime", "Billable", "Entries", "Approver"].map((h) => (
                     <th key={h} className="text-left font-medium text-slate-500 px-3 py-2.5 whitespace-nowrap text-xs uppercase tracking-wide">{h}</th>
                   ))}
+                  {tsCustomCols.map((c) => (
+                    <th key={c.key} className="text-left font-medium text-slate-500 px-3 py-2.5 whitespace-nowrap text-xs uppercase tracking-wide">{c.header}</th>
+                  ))}
+                  <th className="text-left font-medium text-slate-500 px-3 py-2.5 whitespace-nowrap text-xs uppercase tracking-wide"></th>
                 </tr>
               </thead>
               <tbody>
@@ -653,7 +673,15 @@ export default function TimesheetsView() {
                     <td className="px-3 py-2.5 tabular-nums text-slate-500">{num(t.billableHours)}</td>
                     <td className="px-3 py-2.5 tabular-nums text-slate-500">{t.entriesCount}</td>
                     <td className="px-3 py-2.5 text-slate-500">{t.approverName || "—"}</td>
-                    <td className="px-3 py-2.5 text-right"><ClipboardCheck className="h-4 w-4 text-slate-300" /></td>
+                    {tsCustomCols.map((c) => (
+                      <td key={c.key} className="px-3 py-2.5 text-slate-600">{c.render ? c.render(t) : null}</td>
+                    ))}
+                    <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1">
+                        <RecordFieldsButton moduleKey="timesheet" recordId={t.id} label={t.resource.name} onSaved={tsFields.refetch} />
+                        <ClipboardCheck className="h-4 w-4 text-slate-300" />
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -721,6 +749,8 @@ function ReadOnlyWeek({ ts, projectLabels, taskLabels, actions }: {
   taskLabels: Record<string, string>;
   actions?: ReactNode;
 }) {
+  // Field Dictionary: per-entry custom fields (day rows carry stable ids)
+  const entryFields = useModuleFieldsHandle("timesheet_entry", ts.entries.map((e) => e.id));
   return (
     <div>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-3">
@@ -740,8 +770,8 @@ function ReadOnlyWeek({ ts, projectLabels, taskLabels, actions }: {
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-[1]">
               <tr className="bg-slate-50 border-b border-slate-200">
-                {["Day", "Project", "Task", "Activity", "Time", "Hours", "Billable", "Note"].map((h) => (
-                  <th key={h} className="text-left font-medium text-slate-500 px-3 py-2 whitespace-nowrap text-xs uppercase tracking-wide">{h}</th>
+                {["Day", "Project", "Task", "Activity", "Time", "Hours", "Billable", "Note", ""].map((h, i) => (
+                  <th key={i} className="text-left font-medium text-slate-500 px-3 py-2 whitespace-nowrap text-xs uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -756,6 +786,9 @@ function ReadOnlyWeek({ ts, projectLabels, taskLabels, actions }: {
                   <td className="px-3 py-2 tabular-nums font-medium">{num(e.hours)}</td>
                   <td className="px-3 py-2">{e.billable ? <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200" variant="outline">Yes</Badge> : <Badge variant="outline" className="border-slate-200 text-slate-400">No</Badge>}</td>
                   <td className="px-3 py-2 text-slate-500 max-w-40 truncate">{e.comments || "—"}</td>
+                  <td className="px-3 py-2 text-right">
+                    <RecordFieldsButton moduleKey="timesheet_entry" recordId={e.id} label={e.activity || `${e.entryDate.slice(0, 10)} entry`} onSaved={entryFields.refetch} />
+                  </td>
                 </tr>
               ))}
             </tbody>

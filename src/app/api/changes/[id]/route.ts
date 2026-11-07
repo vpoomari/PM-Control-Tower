@@ -12,6 +12,7 @@ import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 import { writeAudit } from "@/lib/audit";
 import { emitRealtime, projectRoom } from "@/lib/realtime";
 import { round2, CR_STATUS } from "@/lib/constants";
+import { fireAutomations } from "@/lib/engines/automations";
 
 const TRANSITIONS: Record<string, string[]> = {
   DRAFT: ["SUBMITTED"],
@@ -160,6 +161,17 @@ export const PATCH = withApi(async (ctx) => {
     ipAddress: ctx.ip,
   });
   emitRealtime("change:changed", { projectId: updated.projectId, changeId: updated.id, code: updated.code, status: updated.status, decision: updated.decision, action: "UPDATED" }, projectRoom(updated.projectId));
+  // Cross-entity automations: workflow transitions re-fire CHANGE_REQUESTED with the
+  // full decision context (create fired it with only the draft context), so rules
+  // conditioned on status/category/decision can react at every stage.
+  if (nextStatus !== before.status) {
+    fireAutomations("CHANGE_REQUESTED", {
+      entityType: "ChangeRequest", entityId: id, projectId: updated.projectId,
+      code: updated.code, title: updated.title, category: updated.category,
+      status: updated.status, previousStatus: before.status, decision: updated.decision,
+      priority: updated.priority, impactCost: updated.impactCost, impactHours: updated.impactHours,
+    });
+  }
   return ok({
     change: updated,
     workflow: { allowedNext: TRANSITIONS[updated.status] ?? [], budgetApplied: false },

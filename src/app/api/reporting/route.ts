@@ -81,15 +81,40 @@ export const POST = withApi(async (ctx) => {
     `Narrative generated deterministically from live operational data — system data, clearly distinguished from this AI commentary.`,
   ].join(" ");
 
+  // ---- CHART SERIES: templates declare chart NAMES; compute real series here so the
+  // viewer can render bar/line/pie visuals instead of KPI tiles only. ----
+  const chartData: Record<string, { kind: "bar" | "line" | "pie"; title: string; series?: { name: string; dataKey: string }[]; data: Record<string, string | number>[] }> = {};
+  chartData.ragDistribution = {
+    kind: "pie", title: "RAG distribution",
+    data: [{ name: "Green", value: green }, { name: "Amber", value: amber }, { name: "Red", value: red }].filter((x) => x.value > 0),
+  };
+  const topProjects = [...projects]
+    .sort((a, b) => (b.currentBudget ?? 0) - (a.currentBudget ?? 0))
+    .slice(0, 6)
+    .map((p) => ({ name: p.code, budget: p.currentBudget ?? p.baselineBudget ?? 0, actual: p.actualCost ?? 0, forecast: p.forecastCost ?? 0 }));
+  if (topProjects.length) {
+    chartData.budgetVsActualByProject = { kind: "bar", title: "Budget vs actual by project (top by budget)", series: [{ name: "Budget", dataKey: "budget" }, { name: "Actual", dataKey: "actual" }], data: topProjects };
+    chartData.investmentByPortfolio = { kind: "bar", title: "Investment by project — actual vs forecast", series: [{ name: "Actual", dataKey: "actual" }, { name: "Forecast", dataKey: "forecast" }], data: topProjects };
+    chartData.forecastVariance = { kind: "bar", title: "Forecast vs budget variance", series: [{ name: "Budget", dataKey: "budget" }, { name: "Forecast", dataKey: "forecast" }], data: topProjects };
+    chartData.forecastTrend = { kind: "bar", title: "Forecast cost — top projects", series: [{ name: "Forecast", dataKey: "forecast" }], data: topProjects };
+    chartData.spendTrend = { kind: "bar", title: "Spend — actual vs forecast", series: [{ name: "Actual", dataKey: "actual" }, { name: "Forecast", dataKey: "forecast" }], data: topProjects };
+    chartData.cpiByProject = { kind: "bar", title: "Cost & schedule performance by project", series: [{ name: "Budget", dataKey: "budget" }, { name: "Actual", dataKey: "actual" }], data: topProjects };
+  }
+  if (evmAgg.length > 1) {
+    chartData.evmTrend = { kind: "line", title: "CPI / SPI trend (latest periods)", series: [{ name: "CPI", dataKey: "cpi" }, { name: "SPI", dataKey: "spi" }], data: [...evmAgg].reverse().map((e) => ({ name: e.statusDate.toISOString().slice(0, 10), cpi: e.cpi, spi: e.spi })) };
+    chartData.costVarianceTrend = chartData.evmTrend;
+    chartData.healthTrend = chartData.evmTrend;
+  }
+
   const report = await db.generatedReport.create({
     data: {
       templateId: template.id, templateName: template.name, category: template.category,
       generatedBy: session.name, period: body.period, format: "HTML",
-      dataJson: JSON.stringify({ kpis: kpiSnapshot, templateKpis: JSON.parse(template.kpis), charts: JSON.parse(template.charts), tables: JSON.parse(template.tables) }),
+      dataJson: JSON.stringify({ kpis: kpiSnapshot, templateKpis: JSON.parse(template.kpis), charts: JSON.parse(template.charts), chartData, tables: JSON.parse(template.tables) }),
       narrative, status: "READY",
     },
   });
   await db.reportingTemplate.update({ where: { id: template.id }, data: { runCount: { increment: 1 } } });
   await writeAudit({ userId: session.id, userName: session.name, action: "CREATE", entityType: "GeneratedReport", entityId: report.id, entityName: template.name, after: { period: body.period, rag } });
-  return ok({ report: { id: report.id, templateName: template.name, kpis: kpiSnapshot, narrative, rag, period: body.period } }, 201);
+  return ok({ report: { id: report.id, templateName: template.name, kpis: kpiSnapshot, narrative, rag, period: body.period, chartData } }, 201);
 }, { permission: "reports.view", rateLimit: { limit: 60, windowMs: 60_000 } });

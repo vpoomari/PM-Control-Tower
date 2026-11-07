@@ -12,10 +12,15 @@ import {
 import type { Column } from "@/components/pmct/kit";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PROJECT_STATUS, PRIORITY, money, num, fmtDate } from "@/lib/constants";
+import { PROJECT_STATUS, money, num, fmtDate } from "@/lib/constants";
+import {
+  ProjectFormFields, emptyProjectForm, projectCreatePayload, type ProjectFormState,
+} from "@/components/pmct/project-form";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import { customFieldColumns } from "@/components/fields/custom-columns";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
 import { Plus, FolderKanban, Wallet, Activity, ClipboardList } from "lucide-react";
 
 type ProjectRow = {
@@ -29,17 +34,13 @@ type ProjectRow = {
 };
 interface ProjectsBundle { items: ProjectRow[]; total: number; skip: number; take: number }
 interface ProgramOpt { id: string; code: string; name: string; portfolio?: { id: string; code: string; name: string } }
+interface PortfolioOpt { id: string; code: string; name: string }
 interface UsersBundle { users: { id: string; name: string; isActive: boolean }[] }
-
-interface FormState {
-  code: string; name: string; description: string; programId: string; ownerId: string;
-  startDate: string; endDate: string; budget: string; status: string; priority: string;
-}
-const EMPTY_FORM: FormState = { code: "", name: "", description: "", programId: "", ownerId: "", startDate: "", endDate: "", budget: "", status: "DRAFT", priority: "MEDIUM" };
 
 export default function ProjectsView() {
   const projects = useApi<ProjectsBundle>("/api/projects?take=500");
   const programs = useApi<ProgramOpt[]>("/api/programs");
+  const portfolios = useApi<PortfolioOpt[]>("/api/portfolios");
   const users = useApi<UsersBundle>("/api/admin/users");
   useRealtimeRefetch(projects.refetch, ["project:created", "project:updated", "project:health"]);
 
@@ -47,7 +48,7 @@ export default function ProjectsView() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [ragFilter, setRagFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [form, setForm] = useState<ProjectFormState>(emptyProjectForm);
   const [saving, setSaving] = useState(false);
 
   const rows = useMemo(() => {
@@ -64,26 +65,17 @@ export default function ProjectsView() {
     });
   }, [projects.data, query, statusFilter, ragFilter]);
 
-  const openCreate = () => { setForm(EMPTY_FORM); setDialogOpen(true); };
+  const openCreate = () => { setForm(emptyProjectForm()); setDialogOpen(true); };
+
+  // --- Field Dictionary: assignments + bulk values for the visible projects ---
+  const fields = useModuleFieldsHandle("project", rows.map((r) => r.id));
 
   const save = async () => {
     if (form.code.trim().length < 2) { toast.error("Code must be at least 2 characters"); return; }
     if (form.name.trim().length < 2) { toast.error("Name must be at least 2 characters"); return; }
     setSaving(true);
     try {
-      await api.post("/api/projects", {
-        code: form.code.trim().toUpperCase(),
-        name: form.name.trim(),
-        description: form.description.trim() || null,
-        programId: form.programId || null,
-        ownerId: form.ownerId || null,
-        managerId: form.ownerId || null,
-        startDate: form.startDate ? new Date(form.startDate).toISOString() : null,
-        endDate: form.endDate ? new Date(form.endDate).toISOString() : null,
-        currentBudget: form.budget === "" ? undefined : Number(form.budget),
-        status: form.status,
-        priority: form.priority,
-      });
+      await api.post("/api/projects", projectCreatePayload(form));
       toast.success("Project created");
       setDialogOpen(false);
       await projects.refetch();
@@ -125,6 +117,11 @@ export default function ProjectsView() {
         <p className="tabular-nums text-slate-400">{money(r.actualCost)} actual</p>
       </div>
     ) },
+    // Field Dictionary: dynamic columns for any field flagged "in table"
+    ...customFieldColumns<ProjectRow>(fields.tableColumns, fields.values),
+    { key: "cf", header: "", className: "w-10", render: (r) => (
+      <RecordFieldsButton moduleKey="project" recordId={r.id} label={r.code} onSaved={fields.refetch} />
+    ) },
   ];
 
   if (projects.loading) return <LoadingBlock label="Loading project register…" />;
@@ -142,7 +139,12 @@ export default function ProjectsView() {
         title="Project Register"
         subtitle="Every project under management — click a row to open its workspace."
         breadcrumb={["Home", "Projects"]}
-        actions={<Button onClick={openCreate}><Plus className="h-4 w-4 mr-1.5" /> New project</Button>}
+        actions={
+          <>
+            {fields.actions}
+            <Button onClick={openCreate}><Plus className="h-4 w-4 mr-1.5" /> New project</Button>
+          </>
+        }
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -187,81 +189,20 @@ export default function ProjectsView() {
         maxHeight="640px"
       />
 
-      {/* New project dialog */}
+      {/* New project dialog — same field set as workspace Edit project */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>New project</DialogTitle></DialogHeader>
           <div className="grid gap-3 py-1">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="pj-code">Code</Label>
-                <Input id="pj-code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="PRJ-XX-000" />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="pj-status">Status</Label>
-                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                  <SelectTrigger id="pj-status"><SelectValue /></SelectTrigger>
-                  <SelectContent>{PROJECT_STATUS.map((s) => <SelectItem key={s} value={s}>{s.replace("_", " ")}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="pj-name">Name</Label>
-              <Input id="pj-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Customer Onboarding Revamp" />
+              <Label htmlFor="pj-code">Code</Label>
+              <Input id="pj-code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="PRJ-XX-000" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="pj-program">Program</Label>
-                <Select value={form.programId || "none"} onValueChange={(v) => setForm({ ...form, programId: v === "none" ? "" : v })}>
-                  <SelectTrigger id="pj-program"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— Standalone —</SelectItem>
-                    {(programs.data || []).map((g) => (
-                      <SelectItem key={g.id} value={g.id}>{g.code} — {g.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="pj-owner">Project manager</Label>
-                <Select value={form.ownerId || "none"} onValueChange={(v) => setForm({ ...form, ownerId: v === "none" ? "" : v })}>
-                  <SelectTrigger id="pj-owner"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— Unassigned —</SelectItem>
-                    {(users.data?.users || []).filter((u) => u.isActive).map((u) => (
-                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="pj-start">Start</Label>
-                <Input id="pj-start" type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="pj-end">End</Label>
-                <Input id="pj-end" type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="pj-budget">Budget</Label>
-                <Input id="pj-budget" type="number" min={0} value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} placeholder="0" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="pj-priority">Priority</Label>
-                <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
-                  <SelectTrigger id="pj-priority"><SelectValue /></SelectTrigger>
-                  <SelectContent>{PRIORITY.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="pj-desc">Description</Label>
-              <Textarea id="pj-desc" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-            </div>
+            <ProjectFormFields
+              form={form}
+              setForm={setForm}
+              meta={{ programs: programs.data || [], portfolios: portfolios.data || [], users: users.data?.users || [] }}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

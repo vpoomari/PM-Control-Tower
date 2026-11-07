@@ -43,8 +43,7 @@ export const GET = withApi(async () => {
     latestEvmPeriods,
     topRisks,
     openAlerts,
-    overdueMsList,
-    overdueMsCount,
+    overdueMsRows,
     allocationSums,
     recentSnapshots,
     pendingGates,
@@ -83,12 +82,13 @@ export const GET = withApi(async () => {
       include: { project: { select: { code: true, name: true } } },
     }),
     db.milestone.findMany({
-      where: { dueDate: { lt: now }, status: { not: "COMPLETED" } },
+      // Date predicate runs in JS (mixed TEXT/INTEGER date storage — see the
+      // note in automations/scan): `lt: now` would silently match 0 rows.
+      where: { dueDate: { not: null }, status: { not: "COMPLETED" } },
       orderBy: { dueDate: "asc" },
-      take: 10,
+      take: 5000,
       include: { project: { select: { code: true, name: true } } },
     }),
-    db.milestone.count({ where: { dueDate: { lt: now }, status: { not: "COMPLETED" } } }),
     db.assignment.groupBy({
       by: ["resourceId"],
       where: { status: "ACTIVE" },
@@ -185,6 +185,14 @@ export const GET = withApi(async () => {
       });
     }
   }
+
+  // ---- Overdue milestones: windowed in JS (storage-agnostic SQL above) ----
+  // Count + list derive from the same filtered set so they can never disagree.
+  const overdueMs = overdueMsRows
+    .filter((m) => m.dueDate !== null && m.dueDate.getTime() < now.getTime())
+    .sort((a, b) => (a.dueDate?.getTime() ?? 0) - (b.dueDate?.getTime() ?? 0));
+  const overdueMsCount = overdueMs.length;
+  const overdueMsList = overdueMs.slice(0, 10);
 
   return ok({
     generatedAt: now.toISOString(),

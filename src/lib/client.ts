@@ -60,9 +60,14 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 export const api = {
   get: <T,>(path: string) => request<T>("GET", path),
   post: <T,>(path: string, body?: unknown) => request<T>("POST", path, body),
+  put: <T,>(path: string, body?: unknown) => request<T>("PUT", path, body),
   patch: <T,>(path: string, body?: unknown) => request<T>("PATCH", path, body),
   del: <T,>(path: string) => request<T>("DELETE", path),
 };
+
+/** Refetch produced by useApi — tagged so useRealtimeRefetch can skip its loud
+ *  duplicate of `data:imported` (useApi refreshes itself, silently + debounced). */
+export type ApiRefetch = (() => Promise<void>) & { __useApi?: boolean };
 
 /** Lightweight data-fetching hook with refetch + loading + error states. */
 export function useApi<T>(path: string | null, deps: unknown[] = []) {
@@ -72,18 +77,44 @@ export function useApi<T>(path: string | null, deps: unknown[] = []) {
   const pathRef = useRef(path);
   pathRef.current = path;
 
-  const refetch = useCallback(async () => {
+  const fetchNow = useCallback(async (silent: boolean) => {
     if (!pathRef.current) return;
-    setLoading(true);
-    setError(null);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const d = await api.get<T>(pathRef.current);
       setData(d);
+      if (silent) setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load");
+      // A failed background re-read keeps the data already on screen — only a
+      // user-triggered refetch surfaces the error.
+      if (!silent) setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
+  }, []);
+
+  const refetch = useCallback(async () => {
+    await fetchNow(false);
+  }, [fetchNow]) as ApiRefetch;
+  refetch.__useApi = true;
+
+  // Universal auto-refresh: after ANY import (auto or per-entity) every mounted
+  // useApi — every tab, list, KPI strip — re-reads itself without flashing a
+  // spinner. Debounced so a multi-dataset import fans out as one request each.
+  const refreshTimer = useRef<number | null>(null);
+  useEffect(() => onRealtime((event) => {
+    if (event !== "data:imported") return;
+    if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
+    refreshTimer.current = window.setTimeout(() => {
+      refreshTimer.current = null;
+      void fetchNow(true);
+    }, 250);
+  }), [fetchNow]);
+  useEffect(() => () => {
+    if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
   }, []);
 
   useEffect(() => {
@@ -136,12 +167,20 @@ export function dispatchRealtime(event: string, payload: unknown) {
 
 /** Hook: refetch when relevant realtime events fire. */
 export function useRealtimeRefetch(refetch: () => void, events: string[]) {
+  // useApi-owned refetches already listen for `data:imported` themselves (silent,
+  // debounced) — skip the loud duplicate here; custom refetches still get it.
+  const isUseApi = (refetch as ApiRefetch).__useApi === true;
   useEffect(() => {
     return onRealtime((event) => {
       // "data:imported" is a universal refresh hint: after a CSV import the
       // currently mounted view (which owns the Import/Export dialog) must re-read
-      // its data. The SPA mounts one view at a time, so this stays cheap.
-      if (events.includes(event) || events.includes("*") || event === "data:imported") refetch();
+      // its data. The SPA mounts one view at a time, so this stays cheap — and
+      // useApi-backed hooks already re-read silently, without a loading flash.
+      if (event === "data:imported") {
+        if (!isUseApi) refetch();
+        return;
+      }
+      if (events.includes(event) || events.includes("*")) refetch();
     });
-  }, [events.join(",")]);
+  }, [events.join(","), isUseApi]);
 }

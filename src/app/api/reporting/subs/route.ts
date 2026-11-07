@@ -10,7 +10,14 @@ import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 export const GET = withApi(async (ctx) => {
   const session = ctx.session!;
   const subs = await db.reportSubscription.findMany({ where: { userId: session.id }, orderBy: { createdAt: "desc" } });
-  const templates = await db.reportingTemplate.findMany({ where: { id: { in: subs.map((s) => s.templateId) } }, select: { id: true, name: true, category: true } });
+  // Return the full published catalogue (not just subscribed ones) so the UI can
+  // offer what's available to subscribe to; the view filters out already-subscribed.
+  const templates = await db.reportingTemplate.findMany({
+    where: { status: "PUBLISHED" },
+    select: { id: true, name: true, category: true },
+    orderBy: { name: "asc" },
+    take: 200,
+  });
   return ok({ subscriptions: subs, templates });
 }, { permission: "reports.view", rateLimit: { limit: 240, windowMs: 60_000 } });
 
@@ -28,8 +35,12 @@ export const POST = withApi(async (ctx) => {
 }, { permission: "reports.view", rateLimit: { limit: 60, windowMs: 60_000 } });
 
 export const DELETE = withApi(async (ctx) => {
+  const session = ctx.session!;
   const id = ctx.searchParams.get("id");
   if (!id) throw new ApiError(400, "id required");
+  // Scope to the session user — an ID from another user's subscription must not delete.
+  const existing = await db.reportSubscription.findFirst({ where: { id, userId: session.id } });
+  if (!existing) throw new ApiError(404, "Subscription not found");
   await db.reportSubscription.delete({ where: { id } });
   return ok({ unsubscribed: true });
 }, { permission: "reports.view", rateLimit: { limit: 60, windowMs: 60_000 } });

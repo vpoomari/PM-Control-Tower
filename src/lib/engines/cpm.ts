@@ -12,6 +12,13 @@ export interface CpmTaskInput {
   startDate?: Date | string | null;
   isSummary?: boolean;
   parentId?: string | null;
+  /** Calendar-space compact index (legacy path: absolute epoch day). Explicit start anchor for disconnected tasks. */
+  seedDay?: number | null;
+  /** Same space. Explicit finish anchor for disconnected tasks (honors manually planned finishes). */
+  endSeedDay?: number | null;
+  /** Working-index units (computed by caller through WorkingIndex) */  constraintType?: string | null; // ASAP | ALAP | MSO | SNET | SNLT | FNET | FNLT
+  constraintDay?: number | null;
+  deadlineDay?: number | null;
 }
 export interface CpmDepInput {
   predecessorId: string;
@@ -22,7 +29,13 @@ export interface CpmDepInput {
 export interface CpmResult {
   es: number; ef: number; ls: number; lf: number;
   totalFloat: number; freeFloat: number; critical: boolean;
+  /** Unresolvable constraint conflict in days (lf < es + duration). 0 = none. */
+  violationDays?: number;
+  /** Set when a task has a deadline and its early finish lands after it. */
+  deadlineBreach?: boolean;
 }
+
+const CONSTRAINT_FORWARD = new Set(["SNET", "MSO", "FNET"]);
 
 export function computeCPM(tasks: CpmTaskInput[], deps: CpmDepInput[], projectStart?: Date | string | null): Map<string, CpmResult> {
   const leaves = tasks.filter((t) => !t.isSummary);
@@ -52,10 +65,13 @@ export function computeCPM(tasks: CpmTaskInput[], deps: CpmDepInput[], projectSt
   // ---- Forward pass (topological with cycle guard) ----
   const visiting = new Set<string>();
   const done = new Set<string>();
+  const netEs = new Map<string, number>(); // early start demanded by the network alone
   function forward(id: string): void {
     if (done.has(id) || visiting.has(id)) return;
     visiting.add(id);
     const r = result.get(id)!;
+    const me = leaves.find((t) => t.id === id)!;
+    const cd = me.constraintDay ?? null;
     let es = anchor;
     for (const p of preds.get(id)!) {
       forward(p.predecessorId);
@@ -66,8 +82,26 @@ export function computeCPM(tasks: CpmTaskInput[], deps: CpmDepInput[], projectSt
       else if (p.depType === "SF") es = Math.max(es, pr.es + lag - dur.get(id)!);
       else if (p.depType === "FF") es = Math.max(es, anchor);
     }
+    netEs.set(id, es);
+    // Manually seeded starts are honored for disconnected tasks (no predecessors):
+    // keeps imported/source plans anchored to their explicit dates instead of
+    // collapsing every orphan onto the project anchor. Constraint clamps below may
+    // still pull the task later (netEs above stays network-pure for MSO conflicts).
+    const seed = me.seedDay ?? (me.startDate ? dayNum(me.startDate) : null);
+    if (preds.get(id)!.length === 0 && seed !== null && Number.isFinite(seed)) es = Math.max(es, seed);
     r.es = es;
     r.ef = es + dur.get(id)!;
+    if (cd !== null && CONSTRAINT_FORWARD.has(me.constraintType ?? "")) {
+      if (me.constraintType === "FNET") es = Math.max(es, cd - dur.get(id)!);
+      else if (me.constraintType === "MSO") es = cd; // must-start-on is absolute
+      else es = Math.max(es, cd); // SNET
+    }
+    r.es = es;
+    r.ef = es + dur.get(id)!;
+    // Manually planned finishes are honored for disconnected tasks (wins over duration
+    // math, loses to explicit constraints which were applied just above).
+    const efSeed = me.endSeedDay ?? null;
+    if (preds.get(id)!.length === 0 && efSeed !== null && Number.isFinite(efSeed) && efSeed > r.ef) r.ef = efSeed;
     // FF constraints: successor EF must satisfy predecessor EF + lag
     for (const p of preds.get(id)!) {
       if (p.depType === "FF") {
@@ -93,6 +127,9 @@ export function computeCPM(tasks: CpmTaskInput[], deps: CpmDepInput[], projectSt
     if (doneB.has(id) || visitingB.has(id)) return;
     visitingB.add(id);
     const r = result.get(id)!;
+    const me = leaves.find((t) => t.id === id)!;
+    const cd = me.constraintDay ?? null;
+    const ctype = me.constraintType ?? "";
     let lf = projectFinish;
     let lfSet = succs.get(id)!.length === 0;
     for (const s of succs.get(id)!) {
@@ -107,9 +144,28 @@ export function computeCPM(tasks: CpmTaskInput[], deps: CpmDepInput[], projectSt
       lf = lfSet ? cand : Math.min(lf, cand);
       lfSet = true;
     }
+
+    // Finish/late-start driven constraints tighten the backward pass
+    if (cd !== null) {
+      if (ctype === "FNLT" || ctype === "SNLT") lf = Math.min(lf, ctype === "FNLT" ? cd : cd + dur.get(id)!);
+      if (ctype === "MSO") lf = cd + dur.get(id)!; // must-start-on locks the finish
+      if (ctype === "ALAP") lf = Math.min(lf, projectFinish);
+    } else if (ctype === "ALAP") lf = Math.min(lf, projectFinish);
+
     r.lf = lf;
     r.ls = lf - dur.get(id)!;
     r.totalFloat = Math.max(0, r.ls - r.es);
+    // Constraint conflict detector — only meaningful for genuinely constrained tasks
+    // (SS/FF networks legitimately allow lf < ef on an unconstrained task).
+    // Late-side conflict: the clamp cannot contain the duration (lf < es+dur).
+    // Early-side conflict (MSO): the network demands a start later than the lock.
+    let viol = 0;
+    if (cd !== null && ctype !== "ALAP") {
+      viol = (r.es + dur.get(id)!) - r.lf;
+      if (ctype === "MSO") viol = Math.max(viol, (netEs.get(id) ?? 0) - cd);
+    }
+    r.violationDays = viol > 0 ? Math.ceil(viol) : 0;
+    r.deadlineBreach = (me.deadlineDay ?? null) !== null ? r.ef > (me.deadlineDay as number) + 0.001 : false;
     let ff = succs.get(id)!.length ? Number.POSITIVE_INFINITY : projectFinish - r.ef;
     for (const s of succs.get(id)!) {
       if (s.depType === "FS") {
@@ -136,6 +192,8 @@ export function computeCPM(tasks: CpmTaskInput[], deps: CpmDepInput[], projectSt
         totalFloat: Math.min(...rs.map((r) => r.totalFloat)),
         freeFloat: 0,
         critical: rs.some((r) => r.critical),
+        violationDays: Math.max(0, ...rs.map((r) => r.violationDays ?? 0)),
+        deadlineBreach: rs.some((r) => r.deadlineBreach),
       });
     }
   }

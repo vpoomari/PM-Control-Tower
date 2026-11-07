@@ -23,9 +23,13 @@ function lastNMonths(n: number): string[] {
   return out;
 }
 
-export const GET = withApi(async () => {
+export const GET = withApi(async (ctx) => {
   const now = new Date();
-  const eightWeeksAgo = startOfWeek(new Date(now.getTime() - 8 * 7 * 86_400_000));
+  // Period selector: ?weeks=4|8|13|26 (default 8) — the UI sends this so the
+  // trends window is user-controlled rather than hardcoded.
+  const weeksRaw = Number(ctx.searchParams.get("weeks") ?? 8);
+  const weeks = Number.isFinite(weeksRaw) ? Math.min(52, Math.max(1, Math.floor(weeksRaw))) : 8;
+  const eightWeeksAgo = startOfWeek(new Date(now.getTime() - weeks * 7 * 86_400_000));
   const sixMonthsAgo = new Date(now);
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
   sixMonthsAgo.setUTCDate(1);
@@ -76,9 +80,9 @@ export const GET = withApi(async () => {
     return { projectId: p.id, projectCode: p.code, periods: periods.slice(-12) };
   });
 
-  // ---- Timesheet hours by week (last 8 weeks) ----
+  // ---- Timesheet hours by week (window = ?weeks param, default 8) ----
   const weekMap = new Map<string, { totalHours: number; billableHours: number; timesheets: number }>();
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < weeks; i++) {
     const w = startOfWeek(new Date(eightWeeksAgo.getTime() + i * 7 * 86_400_000));
     weekMap.set(w.toISOString().slice(0, 10), { totalHours: 0, billableHours: 0, timesheets: 0 });
   }
@@ -117,6 +121,7 @@ export const GET = withApi(async () => {
 
   return ok({
     generatedAt: now.toISOString(),
+    weeks,
     healthTimeline,
     evmHistory,
     timesheetWeeks,

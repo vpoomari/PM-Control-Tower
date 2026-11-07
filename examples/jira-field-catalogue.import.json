@@ -1,0 +1,4659 @@
+{
+  "version": 1,
+  "fields": [
+    {
+      "fieldKey": "acceptance_criteria",
+      "label": "Acceptance Criteria",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Completion criteria — Owner: Product Owner · Usage: Quality · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "acceptance_status",
+      "label": "Acceptance Status",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Pending",
+        "Accepted",
+        "Rejected"
+      ],
+      "description": "Pending / Accepted / Rejected — Owner: Business Owner · Usage: Acceptance · Jira type: Dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "accepted_by",
+      "label": "Accepted By",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Risk acceptance authority — Owner: Sponsor / Risk Committee · Usage: Risk acceptance · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "accrued_cost",
+      "label": "Accrued Cost",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Costs incurred but not invoiced — Owner: Finance · Usage: Accruals · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "action_category",
+      "label": "Action Category",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Governance, delivery, risk, finance, etc. — Owner: PMO · Usage: Reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "action_description",
+      "label": "Action Description",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Action to be completed — Owner: Action Owner · Usage: Action tracking · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "action_id",
+      "label": "Action ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Unique action record — Owner: Jira / PMO · Usage: Register · Jira type: Unique identifier",
+      "isActive": true
+    },
+    {
+      "fieldKey": "action_owner",
+      "label": "Action Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Accountable person — Owner: Project Manager · Usage: Accountability · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_benefit_value",
+      "label": "Actual Benefit Value",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Measured actual benefit — Owner: Benefit Owner · Usage: Benefits · Jira type: Currency / number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_capex",
+      "label": "Actual CAPEX",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Actual capital expenditure — Owner: Finance · Usage: Financial reporting · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_completion_date",
+      "label": "Actual Completion Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Actual completion — Owner: Project Manager · Usage: Delivery reporting · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_cost_ac",
+      "label": "Actual Cost (AC)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Actual cost of performed work — Owner: Finance · Usage: EVM · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_delivery_date",
+      "label": "Actual Delivery Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Actual receipt date — Owner: Owner · Usage: Performance · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_external_labour_cost",
+      "label": "Actual External Labour Cost",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "External labour actuals — Owner: Finance · Usage: Cost breakdown · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_finish_date",
+      "label": "Actual Finish Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Actual finish — Owner: Assignee · Usage: Schedule · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_hours",
+      "label": "Actual Hours",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Actual hours worked — Owner: Resource · Usage: Time reporting · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_infrastructure_cost",
+      "label": "Actual Infrastructure Cost",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Infrastructure actuals — Owner: Finance · Usage: Cost breakdown · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_internal_labour_cost",
+      "label": "Actual Internal Labour Cost",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Internal labour actuals — Owner: Finance · Usage: Cost breakdown · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_opex",
+      "label": "Actual OPEX",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Actual operating expenditure — Owner: Finance · Usage: Financial reporting · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_other_costs",
+      "label": "Actual Other Costs",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Other actual costs — Owner: Finance · Usage: Cost breakdown · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_progress",
+      "label": "Actual Progress %",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Actual progress to date — Owner: Planner · Usage: Progress reporting · Jira type: Percentage",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_resource_cost",
+      "label": "Actual Resource Cost",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Approved hours multiplied by cost rate — Owner: System / report · Usage: Financial dashboard · Jira type: Calculated currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_software_cost",
+      "label": "Actual Software Cost",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Software actuals — Owner: Finance · Usage: Cost breakdown · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_spend",
+      "label": "Actual Spend",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Actual spend to date — Owner: Finance · Usage: Financial dashboard · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_start_date",
+      "label": "Actual Start Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Actual start — Owner: Project Manager · Usage: Delivery reporting · Jira type: Date Used in: Project Master, Schedule & WBS.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_travel_expenses",
+      "label": "Actual Travel & Expenses",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Travel and expense actuals — Owner: Finance · Usage: Cost breakdown · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_vendor_cost",
+      "label": "Actual Vendor Cost",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Vendor actuals — Owner: Finance · Usage: Cost breakdown · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "actual_work",
+      "label": "Actual Work",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Recorded effort — Owner: Assignee · Usage: Time tracking · Jira type: Worklog / time tracking",
+      "isActive": true
+    },
+    {
+      "fieldKey": "adoption_readiness",
+      "label": "Adoption Readiness",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Readiness to adopt change — Owner: Change Manager · Usage: Change dashboard · Jira type: Dropdown / score",
+      "isActive": true
+    },
+    {
+      "fieldKey": "affected_business_unit",
+      "label": "Affected Business Unit",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Affected unit — Owner: Owner · Usage: Impact reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "affected_requirement_milestone",
+      "label": "Affected Requirement / Milestone",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Related requirement or milestone — Owner: Owner · Usage: Traceability · Jira type: Issue link",
+      "isActive": true
+    },
+    {
+      "fieldKey": "affected_systems",
+      "label": "Affected Systems",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Systems affected — Owner: Technical Lead · Usage: Technical reporting · Jira type: Multi-select dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "allocated_hours",
+      "label": "Allocated Hours",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Hours already allocated — Owner: Resource Manager · Usage: Capacity planning · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "allocation",
+      "label": "Allocation %",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Allocation share — Owner: Resource Manager · Usage: Utilization · Jira type: Percentage",
+      "isActive": true
+    },
+    {
+      "fieldKey": "allocation_conflict",
+      "label": "Allocation Conflict",
+      "dataType": "BOOLEAN",
+      "options": null,
+      "description": "Overlap or over-allocation flag — Owner: System / Resource Manager · Usage: Alerts · Jira type: Checkbox",
+      "isActive": true
+    },
+    {
+      "fieldKey": "annual_operating_cost",
+      "label": "Annual Operating Cost",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Annual run cost — Owner: Finance · Usage: Business case · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "api_dependency",
+      "label": "API Dependency",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "API dependencies — Owner: Technical Lead · Usage: Integration reporting · Jira type: Text / link",
+      "isActive": true
+    },
+    {
+      "fieldKey": "approval_date",
+      "label": "Approval Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Approval date — Owner: Manager · Usage: Audit · Jira type: Date Used in: Timesheets & Utilization, Budget Master.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "approval_status",
+      "label": "Approval Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Approval stage — Owner: Approver · Usage: Governance · Jira type: Workflow · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "approval_timestamp",
+      "label": "Approval Timestamp",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Approval date and time — Owner: System / Approver · Usage: Audit · Jira type: Date-time",
+      "isActive": true
+    },
+    {
+      "fieldKey": "approved_baseline_finish",
+      "label": "Approved Baseline Finish",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Approved finish baseline — Owner: PMO · Usage: Baseline variance · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "approved_baseline_start",
+      "label": "Approved Baseline Start",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Approved start baseline — Owner: PMO · Usage: Baseline variance · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "approved_budget",
+      "label": "Approved Budget",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Currently approved budget — Owner: Finance · Usage: Budget control · Jira type: Currency Used in: Budget Master, Executive Reporting.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "approved_by",
+      "label": "Approved By",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Approver — Owner: Manager · Usage: Audit · Jira type: User picker Used in: Timesheets & Utilization, Budget Master.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "approved_hours",
+      "label": "Approved Hours",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Approved hours — Owner: Approver · Usage: Cost reporting · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "approver",
+      "label": "Approver",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Person approving — Owner: PMO · Usage: Audit · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "architecture_decision_id",
+      "label": "Architecture Decision ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Architecture decision record — Owner: Architect · Usage: Architecture governance · Jira type: Text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "architecture_owner",
+      "label": "Architecture Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Accountable architect — Owner: Solution Architect · Usage: Governance · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "architecture_review_date",
+      "label": "Architecture Review Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Review date — Owner: Architect · Usage: Governance · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "assignee",
+      "label": "Assignee",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Person assigned to work — Owner: Project Manager · Usage: Workload · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "assignment_end_date",
+      "label": "Assignment End Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Allocation end — Owner: Resource Manager · Usage: Allocation · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "assignment_start_date",
+      "label": "Assignment Start Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Allocation start — Owner: Resource Manager · Usage: Allocation · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "assignment_status",
+      "label": "Assignment Status",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Proposed",
+        "Confirmed",
+        "Active",
+        "Released"
+      ],
+      "description": "Proposed / Confirmed / Active / Released — Owner: Resource Manager · Usage: Allocation · Jira type: Workflow / dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "assumption_category",
+      "label": "Assumption Category",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Business, technical, resource, financial, etc. — Owner: PMO · Usage: Analysis · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "assumption_id",
+      "label": "Assumption ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Unique assumption record — Owner: Jira / PMO · Usage: Register · Jira type: Unique identifier",
+      "isActive": true
+    },
+    {
+      "fieldKey": "assumption_owner",
+      "label": "Assumption Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Accountable owner — Owner: Project Manager · Usage: Accountability · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "assumption_statement",
+      "label": "Assumption Statement",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Statement believed true for planning — Owner: Owner · Usage: Assumption register · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "audit_decision_history",
+      "label": "Audit / Decision History",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Decision and audit trail — Owner: Owner / Jira · Usage: Audit · Jira type: Comments / history",
+      "isActive": true
+    },
+    {
+      "fieldKey": "audit_reference",
+      "label": "Audit Reference",
+      "dataType": "URL",
+      "options": null,
+      "description": "Audit trail reference — Owner: PMO · Usage: Audit · Jira type: Text / URL",
+      "isActive": true
+    },
+    {
+      "fieldKey": "availability_status",
+      "label": "Availability Status",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Available",
+        "Allocated",
+        "Leave",
+        "Inactive"
+      ],
+      "description": "Available / Allocated / Leave / Inactive — Owner: Resource Manager · Usage: Resource planning · Jira type: Dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "available_capacity_hours",
+      "label": "Available Capacity Hours",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Capacity available in period — Owner: Resource Manager · Usage: Capacity planning · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "baseline_benefit_value",
+      "label": "Baseline Benefit Value",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Baseline measurement — Owner: Benefit Owner · Usage: Benefits · Jira type: Currency / number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "baseline_finish_date",
+      "label": "Baseline Finish Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Approved finish baseline — Owner: PMO · Usage: Variance · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "baseline_start_date",
+      "label": "Baseline Start Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Approved start baseline — Owner: PMO · Usage: Variance · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "baseline_update_required",
+      "label": "Baseline Update Required",
+      "dataType": "BOOLEAN",
+      "options": null,
+      "description": "Whether baselines need updating — Owner: PMO · Usage: Baseline control · Jira type: Checkbox",
+      "isActive": true
+    },
+    {
+      "fieldKey": "baseline_version",
+      "label": "Baseline Version",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Updated baseline reference — Owner: PMO · Usage: Audit · Jira type: Text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "benefit_measurement_method",
+      "label": "Benefit Measurement Method",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "How benefit will be measured — Owner: Benefit Owner · Usage: Benefits · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "benefit_owner",
+      "label": "Benefit Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Accountable benefit owner — Owner: Sponsor · Usage: Benefits realization · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "benefit_realization",
+      "label": "Benefit Realization %",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Actual versus target benefit — Owner: System / report · Usage: Benefits dashboard · Jira type: Calculated percentage",
+      "isActive": true
+    },
+    {
+      "fieldKey": "benefit_realization_date",
+      "label": "Benefit Realization Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Target realization date — Owner: Benefit Owner · Usage: Benefits · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "benefit_start_date",
+      "label": "Benefit Start Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Expected benefit start — Owner: Benefit Owner · Usage: Benefits · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "benefits_realized",
+      "label": "Benefits Realized",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Actual benefits achieved — Owner: Benefit Owner · Usage: Benefits dashboard · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "benefits_validation_owner",
+      "label": "Benefits Validation Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Person validating benefits — Owner: Sponsor · Usage: Benefits governance · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "billability",
+      "label": "Billability %",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Billable hours divided by relevant hours — Owner: System / report · Usage: Financial dashboard · Jira type: Calculated percentage",
+      "isActive": true
+    },
+    {
+      "fieldKey": "billable_non_billable",
+      "label": "Billable / Non-billable",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Billability classification — Owner: Resource Manager · Usage: Financial reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "billable_hours",
+      "label": "Billable Hours",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Client-billable hours — Owner: Resource · Usage: Revenue · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "blocker_dependency",
+      "label": "Blocker / Dependency",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "What blocks completion — Owner: Action Owner · Usage: Blocker tracking · Jira type: Issue link / text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "budget_approval_status",
+      "label": "Budget Approval Status",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Draft",
+        "Submitted",
+        "Approved",
+        "Rejected"
+      ],
+      "description": "Draft / Submitted / Approved / Rejected — Owner: Finance · Usage: Governance · Jira type: Workflow",
+      "isActive": true
+    },
+    {
+      "fieldKey": "budget_at_completion_bac",
+      "label": "Budget at Completion (BAC)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Approved performance budget baseline — Owner: Finance / PM · Usage: EVM · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "budget_baseline_date",
+      "label": "Budget Baseline Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Baseline approval date — Owner: Finance · Usage: Variance · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "budget_currency",
+      "label": "Budget Currency",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Currency of budget — Owner: Finance · Usage: Reporting · Jira type: Currency code",
+      "isActive": true
+    },
+    {
+      "fieldKey": "budget_id",
+      "label": "Budget ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Budget record identifier — Owner: Finance · Usage: Budget register · Jira type: Unique identifier",
+      "isActive": true
+    },
+    {
+      "fieldKey": "budget_owner",
+      "label": "Budget Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Budget accountability — Owner: Finance · Usage: Governance · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "budget_remaining",
+      "label": "Budget Remaining",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Budget less actual or forecast, define policy — Owner: System / Finance · Usage: Financial dashboard · Jira type: Calculated currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "budget_variance",
+      "label": "Budget Variance",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Approved budget less actual or forecast, define policy — Owner: System / Finance · Usage: Variance · Jira type: Calculated currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "budget_version",
+      "label": "Budget Version",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Version or revision — Owner: Finance · Usage: Audit · Jira type: Text / number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "business_case_approval_status",
+      "label": "Business Case Approval Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Business case approval stage — Owner: Sponsor / Finance · Usage: Governance · Jira type: Workflow · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "business_case_id",
+      "label": "Business Case ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Business case reference — Owner: Business Owner · Usage: Investment governance · Jira type: Text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "business_case_reference",
+      "label": "Business Case Reference",
+      "dataType": "URL",
+      "options": null,
+      "description": "Link to approved business case — Owner: Business Owner · Usage: Governance · Jira type: URL / text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "business_impact",
+      "label": "Business Impact",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Impact on business outcomes — Owner: Issue Owner · Usage: Impact reporting · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "business_owner",
+      "label": "Business Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Business outcome owner — Owner: Sponsor · Usage: Benefits · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "business_problem_opportunity",
+      "label": "Business Problem / Opportunity",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Problem or opportunity statement — Owner: Business Owner · Usage: Business case · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "business_readiness",
+      "label": "Business Readiness",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Business readiness status — Owner: Business Owner · Usage: Go-live · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "business_unit",
+      "label": "Business Unit",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Owning business unit — Owner: Business Owner · Usage: Portfolio reporting · Jira type: Single-select dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "candidate_resource_pipeline_stage",
+      "label": "Candidate / Resource Pipeline Stage",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Pipeline stage — Owner: Talent Acquisition · Usage: Pipeline · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "capex_budget",
+      "label": "CAPEX Budget",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Capital expenditure budget — Owner: Finance · Usage: CAPEX/OPEX · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "certification",
+      "label": "Certification",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Professional certifications — Owner: Resource Manager · Usage: Skills search · Jira type: Text / multi-select",
+      "isActive": true
+    },
+    {
+      "fieldKey": "change_approval_date",
+      "label": "Change Approval Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Approval date — Owner: PMO · Usage: Audit · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "change_approved_by",
+      "label": "Change Approved By",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Approving authority — Owner: Change Board · Usage: Audit · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "change_control_board_decision",
+      "label": "Change Control Board Decision",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "CCB decision — Owner: Change Board · Usage: Governance · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "change_description",
+      "label": "Change Description",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Description of requested change — Owner: Requestor · Usage: Change register · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "change_impact",
+      "label": "Change Impact",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Impact of change on stakeholder — Owner: Change Manager · Usage: Change management · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "change_priority",
+      "label": "Change Priority",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Priority of request — Owner: PMO · Usage: Change control · Jira type: Priority · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "change_reason",
+      "label": "Change Reason",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Reason for change — Owner: Requestor · Usage: Change register · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "change_request_id",
+      "label": "Change Request ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Unique change request — Owner: PMO · Usage: Change register · Jira type: Text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "change_request_type",
+      "label": "Change Request Type",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Scope",
+        "Schedule",
+        "Cost",
+        "Resource",
+        "Technical"
+      ],
+      "description": "Scope / Schedule / Cost / Resource / Technical — Owner: Requestor · Usage: Change analysis · Jira type: Dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "change_requestor",
+      "label": "Change Requestor",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Person requesting change — Owner: PMO · Usage: Audit · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "change_status",
+      "label": "Change Status",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Draft",
+        "Submitted",
+        "In Review",
+        "Approved",
+        "Rejected",
+        "Implemented"
+      ],
+      "description": "Draft / Submitted / In Review / Approved / Rejected / Implemented — Owner: PMO · Usage: Change dashboard · Jira type: Workflow",
+      "isActive": true
+    },
+    {
+      "fieldKey": "change_ticket_reference",
+      "label": "Change Ticket Reference",
+      "dataType": "URL",
+      "options": null,
+      "description": "Linked change record — Owner: Release Manager · Usage: Traceability · Jira type: Text / URL",
+      "isActive": true
+    },
+    {
+      "fieldKey": "checkbox",
+      "label": "Checkbox",
+      "dataType": "BOOLEAN",
+      "options": null,
+      "description": "Use true/false semantics — Jira type: Boolean / checkbox",
+      "isActive": true
+    },
+    {
+      "fieldKey": "client_customer",
+      "label": "Client / Customer",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Client or customer — Owner: Project Manager · Usage: Client reporting · Jira type: Dropdown / text · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "closure_comments",
+      "label": "Closure Comments",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Closure rationale — Owner: Owner · Usage: Audit · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "closure_date",
+      "label": "Closure Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Closure date — Owner: Owner · Usage: Ageing / closure · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "communication_channel",
+      "label": "Communication Channel",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Email, meeting, portal etc. — Owner: Project Manager · Usage: Communications · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "communication_frequency",
+      "label": "Communication Frequency",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Weekly, monthly, milestone etc. — Owner: Project Manager · Usage: Communications · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "completed_date",
+      "label": "Completed Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Completion date — Owner: Action Owner · Usage: Closure · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "completion_evidence",
+      "label": "Completion Evidence",
+      "dataType": "URL",
+      "options": null,
+      "description": "Evidence of completion — Owner: Assignee · Usage: Audit · Jira type: URL / attachment",
+      "isActive": true
+    },
+    {
+      "fieldKey": "completion_percentage",
+      "label": "Completion Percentage",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Progress — Owner: Action Owner · Usage: Progress reporting · Jira type: Number / percentage",
+      "isActive": true
+    },
+    {
+      "fieldKey": "components",
+      "label": "Components",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Product/system area — Owner: Jira Admin · Usage: Ownership and reporting · Jira type: System field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "conditions_of_approval",
+      "label": "Conditions of Approval",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Conditions attached to approval — Owner: Approver · Usage: Governance · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "confidence_level",
+      "label": "Confidence Level",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Confidence in assumption — Owner: Owner · Usage: Planning · Jira type: Dropdown / percentage",
+      "isActive": true
+    },
+    {
+      "fieldKey": "confirmed_date",
+      "label": "Confirmed Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Date dependency confirmed — Owner: Owner · Usage: Audit · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "consulting_budget",
+      "label": "Consulting Budget",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Consulting costs — Owner: Finance · Usage: Cost breakdown · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "contingency_plan",
+      "label": "Contingency Plan",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Fallback response — Owner: Risk Owner · Usage: Risk response · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "contingency_remaining",
+      "label": "Contingency Remaining",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Remaining contingency — Owner: System / Finance · Usage: Reserve management · Jira type: Calculated currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "contingency_reserve",
+      "label": "Contingency Reserve",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Project contingency — Owner: Finance · Usage: Reserve management · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "contingency_used",
+      "label": "Contingency Used",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Reserve consumed — Owner: Finance · Usage: Reserve management · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "contract_end",
+      "label": "Contract End",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Contract expiry date — Owner: Procurement · Usage: Renewal alerts · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "contract_id",
+      "label": "Contract ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Contract reference — Owner: Procurement · Usage: Contract governance · Jira type: Text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "contract_start",
+      "label": "Contract Start",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Contract start date — Owner: Procurement · Usage: Contract management · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "contract_value",
+      "label": "Contract Value",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Total contract value — Owner: Finance · Usage: Financial reporting · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "contractual_commitment",
+      "label": "Contractual Commitment",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Remaining contractual commitments — Owner: Procurement / Finance · Usage: Commitments · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "conversion_to_risk_required",
+      "label": "Conversion to Risk Required",
+      "dataType": "BOOLEAN",
+      "options": null,
+      "description": "Flag if invalidation creates risk — Owner: PMO · Usage: Risk automation · Jira type: Checkbox",
+      "isActive": true
+    },
+    {
+      "fieldKey": "corrective_action",
+      "label": "Corrective Action",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Corrective action — Owner: Issue Owner · Usage: Resolution · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "cost_avoidance",
+      "label": "Cost Avoidance",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Expected avoided cost — Owner: Business Owner · Usage: Benefits · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "cost_centre",
+      "label": "Cost Centre",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Financial cost centre — Owner: Finance · Usage: Cost allocation · Jira type: Text / dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "cost_impact",
+      "label": "Cost Impact",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Estimated cost delta — Owner: Finance · Usage: Change control · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "cost_performance_index_cpi",
+      "label": "Cost Performance Index (CPI)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "EV divided by AC — Owner: System / report · Usage: EVM · Jira type: Calculated ratio",
+      "isActive": true
+    },
+    {
+      "fieldKey": "cost_rate",
+      "label": "Cost Rate",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Applicable cost rate — Owner: Finance · Usage: Cost reporting · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "cost_variance_cv",
+      "label": "Cost Variance (CV)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "EV minus AC — Owner: System / report · Usage: EVM · Jira type: Calculated currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "created",
+      "label": "Created",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Creation timestamp — Owner: Jira · Usage: Audit · Jira type: System field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "created_by_created_date",
+      "label": "Created By / Created Date",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Creation audit fields — Owner: Jira · Usage: Audit · Jira type: Jira system fields",
+      "isActive": true
+    },
+    {
+      "fieldKey": "critical_defects",
+      "label": "Critical Defects",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Open critical defects — Owner: System / Test Lead · Usage: Quality dashboard · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "critical_path",
+      "label": "Critical Path",
+      "dataType": "BOOLEAN",
+      "options": null,
+      "description": "Critical path flag — Owner: Planner · Usage: Schedule analysis · Jira type: Checkbox",
+      "isActive": true
+    },
+    {
+      "fieldKey": "critical_risks",
+      "label": "Critical Risks",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Count of critical risks — Owner: System / report · Usage: Executive dashboard · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "criticality",
+      "label": "Criticality",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Critical",
+        "High",
+        "Medium",
+        "Low"
+      ],
+      "description": "Critical / High / Medium / Low — Owner: Project Manager · Usage: Prioritization · Jira type: Dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "currency",
+      "label": "Currency",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Rate currency — Owner: Finance · Usage: Cost reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed Used in: Resource Master, Vendor Procurement.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "currency_decimal",
+      "label": "Currency / decimal",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Store currency code separately if needed — Jira type: Number plus currency context or app field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "customer_impact",
+      "label": "Customer Impact",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Customer impact — Owner: Issue Owner · Usage: Impact reporting · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "data_access_classification",
+      "label": "Data Access Classification",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Sensitivity/access category — Owner: Security / HR · Usage: Access governance · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "data_classification",
+      "label": "Data Classification",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Data sensitivity classification — Owner: Data Owner · Usage: Security governance · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "date_assigned",
+      "label": "Date Assigned",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Date assigned — Owner: Coordinator · Usage: Ageing · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "date_logged",
+      "label": "Date Logged",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Date recorded — Owner: Reporter · Usage: Ageing · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "date_picker",
+      "label": "Date picker",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Define timezone/date policy — Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "date_raised",
+      "label": "Date Raised",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Date logged — Owner: Reporter · Usage: Ageing · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "date_time_picker",
+      "label": "Date-time picker",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Use consistent timezone — Jira type: Date-time",
+      "isActive": true
+    },
+    {
+      "fieldKey": "days_open",
+      "label": "Days Open",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Age since raised — Owner: System / report · Usage: Ageing dashboard · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "decision_owner",
+      "label": "Decision Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Accountable decision maker — Owner: Sponsor · Usage: Decision tracking · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "decision_reference",
+      "label": "Decision Reference",
+      "dataType": "URL",
+      "options": null,
+      "description": "Decision record link — Owner: PMO · Usage: Audit · Jira type: Text / URL",
+      "isActive": true
+    },
+    {
+      "fieldKey": "decision_required",
+      "label": "Decision Required",
+      "dataType": "BOOLEAN",
+      "options": null,
+      "description": "Whether a decision is needed — Owner: Owner · Usage: Decision tracking · Jira type: Checkbox Used in: Assumption Register, Issue Register.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "decision_required_by",
+      "label": "Decision Required By",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Decision deadline — Owner: Owner · Usage: Overdue reporting · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "decision_summary",
+      "label": "Decision Summary",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Decision and rationale — Owner: Owner · Usage: Audit · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "decisions_pending",
+      "label": "Decisions Pending",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Open decisions awaiting action — Owner: System / report · Usage: Governance dashboard · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "defect_count",
+      "label": "Defect Count",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Defects associated with project/release — Owner: System / Test Lead · Usage: Quality dashboard · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "defect_owner",
+      "label": "Defect Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Accountable defect owner — Owner: Test Lead · Usage: Defect management · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "defect_resolution_date",
+      "label": "Defect Resolution Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Target or actual resolution date — Owner: Defect Owner · Usage: Defect management · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "deliverable",
+      "label": "Deliverable",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Expected output — Owner: Deliverable Owner · Usage: Delivery tracking · Jira type: Text / link",
+      "isActive": true
+    },
+    {
+      "fieldKey": "deliverable_acceptance_status",
+      "label": "Deliverable Acceptance Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Acceptance status — Owner: Project Manager · Usage: Vendor governance · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "deliverable_owner",
+      "label": "Deliverable Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Deliverable accountable owner — Owner: Project Manager · Usage: Ownership · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "delivery_confidence",
+      "label": "Delivery Confidence",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Confidence in delivery date — Owner: Project Manager · Usage: Executive reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "delivery_location",
+      "label": "Delivery Location",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Primary delivery location — Owner: Project Manager · Usage: Resource reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "delivery_manager",
+      "label": "Delivery Manager",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Delivery oversight — Owner: Project Manager · Usage: Delivery reporting · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "delivery_model",
+      "label": "Delivery Model",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Onsite/offshore/hybrid etc. — Owner: Project Manager · Usage: Delivery planning · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "delivery_status",
+      "label": "Delivery Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Current delivery status — Owner: Provider / Owner · Usage: Dashboard · Jira type: Workflow / dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "demand_closure_reason",
+      "label": "Demand Closure Reason",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Filled, cancelled, no longer needed, etc. — Owner: Requestor · Usage: Demand analysis · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "demand_created_date",
+      "label": "Demand Created Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Date raised — Owner: System / Requestor · Usage: Ageing · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "demand_id",
+      "label": "Demand ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Unique demand record — Owner: Resource Manager · Usage: Demand register · Jira type: Unique identifier",
+      "isActive": true
+    },
+    {
+      "fieldKey": "demand_priority",
+      "label": "Demand Priority",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Relative urgency — Owner: Project Manager · Usage: Demand queue · Jira type: Priority · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "demand_type",
+      "label": "Demand Type",
+      "dataType": "DROPDOWN",
+      "options": [
+        "New",
+        "Replacement",
+        "Backfill"
+      ],
+      "description": "New / Replacement / Backfill — Owner: Requestor · Usage: Demand reporting · Jira type: Dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "department",
+      "label": "Department",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Owning department — Owner: Business Owner · Usage: Portfolio reporting · Jira type: Single-select dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "department_practice",
+      "label": "Department / Practice",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Owning practice — Owner: Resource Manager · Usage: Reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "dependency_description",
+      "label": "Dependency Description",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "What is needed and why — Owner: Owner · Usage: Register · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "dependency_health",
+      "label": "Dependency Health",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Green",
+        "Amber",
+        "Red"
+      ],
+      "description": "Green / Amber / Red — Owner: Owner · Usage: Dashboard · Jira type: Dropdown Used in: Dependency Register, Executive Reporting.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "dependency_id",
+      "label": "Dependency ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Unique dependency record — Owner: Jira / PMO · Usage: Register · Jira type: Unique identifier",
+      "isActive": true
+    },
+    {
+      "fieldKey": "dependency_owner",
+      "label": "Dependency Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Accountable coordinator — Owner: Project Manager · Usage: Accountability · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "dependency_type",
+      "label": "Dependency Type",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Internal / external / technical / business etc. — Owner: Owner · Usage: Dependency analysis · Jira type: Dropdown · configure dropdown options when the value list is agreed Used in: Dependency Register, Schedule & WBS.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "deployment_environment",
+      "label": "Deployment Environment",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Dev",
+        "Test",
+        "UAT",
+        "Staging",
+        "Production"
+      ],
+      "description": "Dev / Test / UAT / Staging / Production — Owner: Release Manager · Usage: Release planning · Jira type: Dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "deployment_status",
+      "label": "Deployment Status",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Planned",
+        "In Progress",
+        "Successful",
+        "Failed"
+      ],
+      "description": "Planned / In Progress / Successful / Failed — Owner: Release Manager · Usage: Release dashboard · Jira type: Workflow",
+      "isActive": true
+    },
+    {
+      "fieldKey": "deployment_window",
+      "label": "Deployment Window",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Planned deployment window — Owner: Release Manager · Usage: Release planning · Jira type: Date-time / text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "description",
+      "label": "Description",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Detailed work item description — Owner: Assignee / Reporter · Usage: Work item detail · Jira type: System field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "discount_rate",
+      "label": "Discount Rate",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Discount rate used for NPV — Owner: Finance · Usage: Investment appraisal · Jira type: Percentage",
+      "isActive": true
+    },
+    {
+      "fieldKey": "downstream_project_task",
+      "label": "Downstream Project / Task",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Consuming item — Owner: Owner · Usage: Traceability · Jira type: Issue / project link",
+      "isActive": true
+    },
+    {
+      "fieldKey": "due_date",
+      "label": "Due Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Target completion date — Owner: Action Owner · Usage: Overdue reporting · Jira type: Date Used in: Action Register, Jira Standard Fields.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "earned_value_ev",
+      "label": "Earned Value (EV)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Budgeted value of completed work — Owner: Project Controls · Usage: EVM · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "employee_id",
+      "label": "Employee ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Employee identifier; restrict access — Owner: HR / Resource Manager · Usage: Resource administration · Jira type: Text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "employment_end_date",
+      "label": "Employment End Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Employment end — Owner: HR · Usage: Workforce reporting · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "employment_start_date",
+      "label": "Employment Start Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Employment start — Owner: HR · Usage: Workforce reporting · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "employment_type",
+      "label": "Employment Type",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Permanent",
+        "Contractor",
+        "Vendor"
+      ],
+      "description": "Permanent / Contractor / Vendor — Owner: Resource Manager · Usage: Workforce reporting · Jira type: Dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "engagement_strategy",
+      "label": "Engagement Strategy",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Approach to engagement — Owner: Project Manager · Usage: Communications · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "escalated_to",
+      "label": "Escalated To",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Escalation recipient — Owner: PMO · Usage: Governance · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "escalation_level",
+      "label": "Escalation Level",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Escalation tier — Owner: PMO · Usage: Governance · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "escalation_owner",
+      "label": "Escalation Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Person responsible for escalation — Owner: PMO · Usage: Governance · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "escalation_required",
+      "label": "Escalation Required",
+      "dataType": "BOOLEAN",
+      "options": null,
+      "description": "Whether escalation is required — Owner: Owner · Usage: Escalation automation · Jira type: Checkbox",
+      "isActive": true
+    },
+    {
+      "fieldKey": "escalation_status",
+      "label": "Escalation Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Current escalation state — Owner: PMO · Usage: Governance · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "estimate_at_completion_eac",
+      "label": "Estimate at Completion (EAC)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Forecast total cost at completion — Owner: Finance · Usage: Forecast · Jira type: Currency Used in: Financial Actuals Forecast, EVM.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "estimate_to_complete_etc",
+      "label": "Estimate to Complete (ETC)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Expected additional cost to finish — Owner: Project Manager / Finance · Usage: Forecast · Jira type: Currency Used in: Financial Actuals Forecast, EVM.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "evidence_supporting_document",
+      "label": "Evidence / Supporting Document",
+      "dataType": "URL",
+      "options": null,
+      "description": "Supporting evidence — Owner: Owner · Usage: Audit · Jira type: URL / attachment",
+      "isActive": true
+    },
+    {
+      "fieldKey": "evidence_link",
+      "label": "Evidence Link",
+      "dataType": "URL",
+      "options": null,
+      "description": "Evidence location — Owner: Owner · Usage: Audit · Jira type: URL / attachment",
+      "isActive": true
+    },
+    {
+      "fieldKey": "evidence_of_completion",
+      "label": "Evidence of Completion",
+      "dataType": "URL",
+      "options": null,
+      "description": "Evidence of closure — Owner: Action Owner · Usage: Audit · Jira type: URL / attachment",
+      "isActive": true
+    },
+    {
+      "fieldKey": "evidence_required",
+      "label": "Evidence Required",
+      "dataType": "BOOLEAN",
+      "options": null,
+      "description": "Evidence needed flag — Owner: PMO · Usage: Governance · Jira type: Checkbox",
+      "isActive": true
+    },
+    {
+      "fieldKey": "evm_baseline_version",
+      "label": "EVM Baseline Version",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Approved baseline version — Owner: Project Controls · Usage: Audit · Jira type: Text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "evm_commentary",
+      "label": "EVM Commentary",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Explanation of EVM results — Owner: Project Manager · Usage: Executive reporting · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "exchange_rate",
+      "label": "Exchange Rate",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Rate to reporting currency — Owner: Finance · Usage: Consolidation · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "executive_report_link",
+      "label": "Executive Report Link",
+      "dataType": "URL",
+      "options": null,
+      "description": "Link to status pack — Owner: PMO · Usage: Executive reporting · Jira type: URL",
+      "isActive": true
+    },
+    {
+      "fieldKey": "executive_support_required",
+      "label": "Executive Support Required",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Leadership actions needed — Owner: Project Manager · Usage: Executive dashboard · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "expected_annual_revenue",
+      "label": "Expected Annual Revenue",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Expected incremental revenue — Owner: Business Owner · Usage: Benefits · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "expected_annual_savings",
+      "label": "Expected Annual Savings",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Expected savings — Owner: Business Owner · Usage: Benefits · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "experience_years",
+      "label": "Experience (Years)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Total or relevant experience — Owner: Resource Manager · Usage: Demand matching · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "external_internal_classification",
+      "label": "External / Internal Classification",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Dependency source classification — Owner: Owner · Usage: Reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "external_labour_budget",
+      "label": "External Labour Budget",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "External labour budget — Owner: Finance · Usage: Cost breakdown · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "feedback",
+      "label": "Feedback",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Stakeholder feedback — Owner: Project Manager · Usage: Engagement · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "finance_business_partner",
+      "label": "Finance Business Partner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Finance contact — Owner: Finance Lead · Usage: Governance · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "finance_comments",
+      "label": "Finance Comments",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Financial narrative — Owner: Finance Partner · Usage: Reporting · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "finance_cost_centre",
+      "label": "Finance Cost Centre",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Cost centre — Owner: Finance · Usage: Cost allocation · Jira type: Text / dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "financial_exposure",
+      "label": "Financial Exposure",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Potential financial impact — Owner: Finance Partner · Usage: Financial risk · Jira type: Currency / number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "financial_forecast_horizon",
+      "label": "Financial Forecast Horizon",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Forecast period — Owner: Finance · Usage: Investment appraisal · Jira type: Years",
+      "isActive": true
+    },
+    {
+      "fieldKey": "financial_health",
+      "label": "Financial Health",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Red",
+        "Amber",
+        "Green"
+      ],
+      "description": "Financial health — Owner: Finance Partner · Usage: Executive dashboard · Jira type: RAG dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "financial_impact",
+      "label": "Financial Impact",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Estimated financial impact — Owner: Finance Partner · Usage: Financial reporting · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "financial_period",
+      "label": "Financial Period",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Period covered — Owner: Finance · Usage: Period reporting · Jira type: Month / quarter",
+      "isActive": true
+    },
+    {
+      "fieldKey": "financial_status_rag",
+      "label": "Financial Status / RAG",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Financial health — Owner: Finance Partner · Usage: Dashboard · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "fiscal_year",
+      "label": "Fiscal Year",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Fiscal year — Owner: Finance · Usage: Annual planning · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "fix_version_affects_version",
+      "label": "Fix Version / Affects Version",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Release versions — Owner: Release Manager · Usage: Release reporting · Jira type: Version field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "forecast_completion_date",
+      "label": "Forecast Completion Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Current forecast finish — Owner: Project Manager · Usage: Schedule health · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "forecast_spend",
+      "label": "Forecast Spend",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Forecast at completion — Owner: Finance · Usage: Financial dashboard · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "forecast_to_complete",
+      "label": "Forecast to Complete",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Forecast remaining cost — Owner: Finance · Usage: Forecast · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "forecast_variance",
+      "label": "Forecast Variance",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Approved budget less forecast EAC — Owner: System / Finance · Usage: Forecast variance · Jira type: Calculated currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "formula_calculated_value",
+      "label": "Formula / calculated value",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Confirm platform/app support — Jira type: App formula / automation / backend",
+      "isActive": true
+    },
+    {
+      "fieldKey": "funding_approval_reference",
+      "label": "Funding Approval Reference",
+      "dataType": "URL",
+      "options": null,
+      "description": "Funding approval evidence — Owner: Finance · Usage: Audit · Jira type: Text / URL",
+      "isActive": true
+    },
+    {
+      "fieldKey": "funding_source",
+      "label": "Funding Source",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Source of project funding — Owner: Finance Partner · Usage: Financial reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed Used in: Project Master, Budget Master.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "gate_outcome",
+      "label": "Gate Outcome",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Approve",
+        "Reject",
+        "Conditional"
+      ],
+      "description": "Approve / Reject / Conditional — Owner: Committee · Usage: Decision tracking · Jira type: Dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "gate_review_date",
+      "label": "Gate Review Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Scheduled/actual review date — Owner: PMO · Usage: Governance · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "gate_status",
+      "label": "Gate Status",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Planned",
+        "In Review",
+        "Passed",
+        "Failed"
+      ],
+      "description": "Planned / In Review / Passed / Failed — Owner: PMO · Usage: Dashboard · Jira type: Workflow",
+      "isActive": true
+    },
+    {
+      "fieldKey": "go_live_outcome",
+      "label": "Go-live Outcome",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Successful",
+        "Partial",
+        "Rolled Back"
+      ],
+      "description": "Successful / Partial / Rolled Back — Owner: Release Manager · Usage: Post-implementation · Jira type: Dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "governance_gate_id",
+      "label": "Governance Gate ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Unique gate record — Owner: PMO · Usage: Governance · Jira type: Text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "governance_stage",
+      "label": "Governance Stage",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Stage-gate category — Owner: PMO · Usage: Governance · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "grade_band",
+      "label": "Grade / Band",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Organisational grade — Owner: HR / Resource Manager · Usage: Workforce reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "holiday_hours",
+      "label": "Holiday Hours",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Holiday hours — Owner: Calendar · Usage: Capacity · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "hourly_daily_bill_rate",
+      "label": "Hourly / Daily Bill Rate",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Client bill rate — Owner: Finance · Usage: Revenue reporting · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "hourly_daily_cost_rate",
+      "label": "Hourly / Daily Cost Rate",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Internal cost rate — Owner: Finance · Usage: Resource costing · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "hypercare_end",
+      "label": "Hypercare End",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Hypercare end date — Owner: Project Manager · Usage: Operations · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "hypercare_start",
+      "label": "Hypercare Start",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Hypercare start date — Owner: Project Manager · Usage: Operations · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "impact_assessment",
+      "label": "Impact Assessment",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Cross-functional assessment — Owner: Project Manager · Usage: Change control · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "impact_if_delayed",
+      "label": "Impact if Delayed",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Consequences of delay — Owner: Owner · Usage: Impact reporting · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "impact_if_invalidated",
+      "label": "Impact if Invalidated",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Consequence if false — Owner: Owner · Usage: Risk assessment · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "impact_score",
+      "label": "Impact Score",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Impact score — Owner: Risk Owner · Usage: Risk scoring · Jira type: Dropdown / score",
+      "isActive": true
+    },
+    {
+      "fieldKey": "impacted_deliverable",
+      "label": "Impacted Deliverable",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Affected deliverable — Owner: Owner · Usage: Delivery impact · Jira type: Issue link",
+      "isActive": true
+    },
+    {
+      "fieldKey": "impacted_milestone",
+      "label": "Impacted Milestone",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Affected milestone — Owner: Owner · Usage: Schedule impact · Jira type: Issue link / dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "implementation_due_date",
+      "label": "Implementation Due Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Target implementation date — Owner: Project Manager · Usage: Implementation · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "implementation_owner",
+      "label": "Implementation Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Responsible for implementation — Owner: Project Manager · Usage: Implementation · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "implementation_status",
+      "label": "Implementation Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Implementation progress — Owner: Project Manager · Usage: Change tracking · Jira type: Workflow · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "incident_reference",
+      "label": "Incident Reference",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Related incident — Owner: Service Owner · Usage: Operations · Jira type: Issue link / text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "influence_level",
+      "label": "Influence Level",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Influence rating — Owner: Project Manager · Usage: Engagement planning · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "infrastructure_budget",
+      "label": "Infrastructure Budget",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Infrastructure costs — Owner: Finance · Usage: Cost breakdown · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "inherent_risk_score",
+      "label": "Inherent Risk Score",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Probability × impact before controls — Owner: System / PMO · Usage: Heatmap · Jira type: Formula / number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "integration_system",
+      "label": "Integration System",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Integrated systems — Owner: Technical Lead · Usage: Integration reporting · Jira type: Multi-select / link",
+      "isActive": true
+    },
+    {
+      "fieldKey": "interest_level",
+      "label": "Interest Level",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Interest rating — Owner: Project Manager · Usage: Engagement planning · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "internal_external",
+      "label": "Internal / External",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Workforce classification — Owner: Resource Manager · Usage: Cost reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "internal_external_preference",
+      "label": "Internal / External Preference",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Preferred workforce source — Owner: Requestor · Usage: Sourcing · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "internal_labour_budget",
+      "label": "Internal Labour Budget",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Internal labour budget — Owner: Finance · Usage: Cost breakdown · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "internal_rate_of_return_irr",
+      "label": "Internal Rate of Return (IRR)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Discount rate producing zero NPV — Owner: Finance · Usage: Investment appraisal · Jira type: Percentage",
+      "isActive": true
+    },
+    {
+      "fieldKey": "interview_status",
+      "label": "Interview Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Interview progress — Owner: Talent Acquisition · Usage: Recruitment · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "investment_category",
+      "label": "Investment Category",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Investment classification — Owner: Sponsor · Usage: Portfolio reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "investment_type",
+      "label": "Investment Type",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Capital or operating investment — Owner: Finance · Usage: Financial reporting · Jira type: CAPEX / OPEX dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "invoice_status",
+      "label": "Invoice Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Invoice lifecycle status — Owner: Finance · Usage: Accounts payable · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "issue_project_link",
+      "label": "Issue / project link",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Use controlled link types — Jira type: Issue link / project entity",
+      "isActive": true
+    },
+    {
+      "fieldKey": "issue_category",
+      "label": "Issue Category",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Delivery, technical, operational, financial, etc. — Owner: PMO · Usage: Analysis · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "issue_description",
+      "label": "Issue Description",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Observed issue — Owner: Reporter · Usage: Issue register · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "issue_id",
+      "label": "Issue ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Unique issue record — Owner: Jira / PMO · Usage: Register · Jira type: Unique identifier",
+      "isActive": true
+    },
+    {
+      "fieldKey": "issue_links",
+      "label": "Issue Links",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Related, blocks, is blocked by etc. — Owner: Project Team · Usage: Traceability · Jira type: Link field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "issue_owner",
+      "label": "Issue Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Accountable resolver — Owner: Project Manager · Usage: Accountability · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "issue_type_work_type",
+      "label": "Issue Type / Work Type",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Epic, Story, Task, Bug, Sub-task or custom type — Owner: Jira Admin · Usage: Workflow routing · Jira type: System field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "job_title",
+      "label": "Job Title",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Formal job title — Owner: HR / Resource Manager · Usage: Workforce reporting · Jira type: Text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "key_achievements",
+      "label": "Key Achievements",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Achievements this period — Owner: Project Manager · Usage: Status report · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "key_blockers",
+      "label": "Key Blockers",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Top blockers — Owner: Project Manager · Usage: Status report · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "key_deliverables",
+      "label": "Key Deliverables",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Expected deliverables — Owner: Project Manager · Usage: Delivery tracking · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "labels",
+      "label": "Labels",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Flexible tags — Owner: Project Team · Usage: Filtering · Jira type: System field Used in: Jira Standard Fields, Field Types & Config.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "last_communication_date",
+      "label": "Last Communication Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Last contact date — Owner: Project Manager · Usage: Communications · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "last_forecast_date",
+      "label": "Last Forecast Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Date of latest forecast — Owner: Finance · Usage: Forecast governance · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "last_reviewed_date",
+      "label": "Last Reviewed Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Last review date — Owner: Owner · Usage: Governance · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "last_status_report_date",
+      "label": "Last Status Report Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Most recent reporting date — Owner: Project Manager · Usage: Reporting cadence · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "last_updated_by_updated_date",
+      "label": "Last Updated By / Updated Date",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Last update audit fields — Owner: Jira · Usage: Audit · Jira type: Jira system fields",
+      "isActive": true
+    },
+    {
+      "fieldKey": "leave_hours",
+      "label": "Leave Hours",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Leave hours — Owner: Resource / HR · Usage: Capacity · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "legal_entity",
+      "label": "Legal Entity",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Legal entity — Owner: Finance · Usage: Consolidation · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "lessons_learned",
+      "label": "Lessons Learned",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Learning from issue — Owner: Project Manager · Usage: Continuous improvement · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "location_country",
+      "label": "Location / Country",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Resource location — Owner: Resource Manager · Usage: Location reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "management_reserve",
+      "label": "Management Reserve",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Management-held reserve — Owner: Finance · Usage: Reserve management · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "meeting_decision_reference",
+      "label": "Meeting / Decision Reference",
+      "dataType": "URL",
+      "options": null,
+      "description": "Originating meeting or decision — Owner: Coordinator · Usage: Traceability · Jira type: Text / URL",
+      "isActive": true
+    },
+    {
+      "fieldKey": "meeting_decision",
+      "label": "Meeting Decision",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Relevant stakeholder decision — Owner: Coordinator · Usage: Decision tracking · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "milestone_name",
+      "label": "Milestone Name",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Milestone title — Owner: Project Manager · Usage: Milestone tracking · Jira type: Text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "milestone_status",
+      "label": "Milestone Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Milestone lifecycle status — Owner: Project Manager · Usage: Milestone dashboard · Jira type: Workflow / dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "milestone_type",
+      "label": "Milestone Type",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Governance, technical, business, release etc. — Owner: Project Manager · Usage: Reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "milestones_completed",
+      "label": "Milestones Completed",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Completed milestones — Owner: System / report · Usage: Executive dashboard · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "milestones_overdue",
+      "label": "Milestones Overdue",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Overdue milestones — Owner: System / report · Usage: Executive dashboard · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "milestones_planned",
+      "label": "Milestones Planned",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Milestones due/planned — Owner: System / report · Usage: Executive dashboard · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "mitigation_due_date",
+      "label": "Mitigation Due Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Mitigation deadline — Owner: Risk Owner · Usage: Overdue tracking · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "mitigation_owner",
+      "label": "Mitigation Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Person accountable for mitigation — Owner: Project Manager · Usage: Accountability · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "mitigation_plan",
+      "label": "Mitigation Plan",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Planned controls and mitigation — Owner: Risk Owner · Usage: Risk response · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "mitigation_progress",
+      "label": "Mitigation Progress %",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Mitigation completion — Owner: Risk Owner · Usage: Progress reporting · Jira type: Number / percentage",
+      "isActive": true
+    },
+    {
+      "fieldKey": "multi_select_dropdown",
+      "label": "Multi-select dropdown",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Limit option sprawl — Jira type: Select list (multiple choices) · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "net_present_value_npv",
+      "label": "Net Present Value (NPV)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Discounted cash flows net of investment — Owner: Finance · Usage: Investment appraisal · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "next_communication_date",
+      "label": "Next Communication Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Next planned contact — Owner: Project Manager · Usage: Reminders · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "next_period_priorities",
+      "label": "Next Period Priorities",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Upcoming priorities — Owner: Project Manager · Usage: Status report · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "next_review_date",
+      "label": "Next Review Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Next review date — Owner: Owner · Usage: Governance reminders · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "next_status_report_date",
+      "label": "Next Status Report Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Next report due — Owner: Project Manager · Usage: Reporting cadence · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "non_billable_hours",
+      "label": "Non-billable Hours",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Non-billable hours — Owner: Resource · Usage: Utilization · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "non_functional_requirements",
+      "label": "Non-functional Requirements",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Performance, availability, scalability etc. — Owner: Architect · Usage: Requirements · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "number",
+      "label": "Number",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Validate ranges and precision — Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "number_of_resources_required",
+      "label": "Number of Resources Required",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Headcount demand — Owner: Requestor · Usage: Capacity planning · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "onboarding_status",
+      "label": "Onboarding Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Onboarding progress — Owner: Resource Manager · Usage: Readiness · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "one_time_implementation_cost",
+      "label": "One-time Implementation Cost",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Implementation cost — Owner: Finance · Usage: Business case · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "open_dependencies",
+      "label": "Open Dependencies",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Count of open dependencies — Owner: System / report · Usage: Executive dashboard · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "open_issues",
+      "label": "Open Issues",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Count of open issues — Owner: System / report · Usage: Executive dashboard · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "open_purchase_order_commitment",
+      "label": "Open Purchase Order Commitment",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Open PO value not yet expensed — Owner: Procurement / Finance · Usage: Commitments · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "open_risks",
+      "label": "Open Risks",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Count of open risks — Owner: System / report · Usage: Executive dashboard · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "operational_impact",
+      "label": "Operational Impact",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Operational impact — Owner: Issue Owner · Usage: Impact reporting · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "opex_budget",
+      "label": "OPEX Budget",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Operating expenditure budget — Owner: Finance · Usage: CAPEX/OPEX · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "organisation",
+      "label": "Organisation",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Stakeholder organisation — Owner: Project Manager · Usage: Stakeholder analysis · Jira type: Text / dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "original_budget",
+      "label": "Original Budget",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Original approved budget — Owner: Finance · Usage: Baseline · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "original_duration",
+      "label": "Original Duration",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Planned duration — Owner: Planner · Usage: Schedule · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "original_estimate",
+      "label": "Original Estimate",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Initial effort estimate — Owner: Assignee · Usage: Planning · Jira type: Time tracking",
+      "isActive": true
+    },
+    {
+      "fieldKey": "other_costs_budget",
+      "label": "Other Costs Budget",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Other costs — Owner: Finance · Usage: Cost breakdown · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "overall_confidence",
+      "label": "Overall Confidence",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Confidence in successful delivery — Owner: Project Manager · Usage: Executive dashboard · Jira type: Percentage / dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "overall_project_health",
+      "label": "Overall Project Health",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Overall Red",
+        "Amber",
+        "Green"
+      ],
+      "description": "Overall Red/Amber/Green — Owner: Project Manager · Usage: Executive dashboard · Jira type: RAG dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "overdue_actions",
+      "label": "Overdue Actions",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Count of overdue actions — Owner: System / report · Usage: Executive dashboard · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "overtime_hours",
+      "label": "Overtime Hours",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Overtime hours — Owner: Resource · Usage: Cost reporting · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "owner",
+      "label": "Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Accountable owner — Owner: Project Manager · Usage: Accountability · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "paragraph_multi_line_text",
+      "label": "Paragraph / multi-line text",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Red",
+        "Amber",
+        "Green"
+      ],
+      "description": "Use for longer narratives — Jira type: Paragraph",
+      "isActive": true
+    },
+    {
+      "fieldKey": "parent",
+      "label": "Parent",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Parent work item — Owner: Project Team · Usage: Hierarchy · Jira type: Hierarchy field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "parent_project_initiative",
+      "label": "Parent Project / Initiative",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Related parent initiative — Owner: PMO · Usage: Hierarchy · Jira type: Project link",
+      "isActive": true
+    },
+    {
+      "fieldKey": "parent_work_item",
+      "label": "Parent Work Item",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Parent item in hierarchy — Owner: Project Manager · Usage: Hierarchy · Jira type: Parent link",
+      "isActive": true
+    },
+    {
+      "fieldKey": "pass_rate",
+      "label": "Pass Rate",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Passed / executed test cases — Owner: System / Test Lead · Usage: Quality dashboard · Jira type: Calculated percentage",
+      "isActive": true
+    },
+    {
+      "fieldKey": "payback_period",
+      "label": "Payback Period",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Time to recover investment — Owner: Finance · Usage: Investment appraisal · Jira type: Months",
+      "isActive": true
+    },
+    {
+      "fieldKey": "payment_terms",
+      "label": "Payment Terms",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Payment terms — Owner: Finance · Usage: Accounts payable · Jira type: Dropdown / text · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "performance_test_status",
+      "label": "Performance Test Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Performance testing outcome — Owner: Test Lead · Usage: Quality gate · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "period",
+      "label": "Period",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Financial reporting period — Owner: Finance · Usage: Period reporting · Jira type: Month / quarter",
+      "isActive": true
+    },
+    {
+      "fieldKey": "phase_stage",
+      "label": "Phase / Stage",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Project phase — Owner: Project Manager · Usage: Lifecycle · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "planned_due_date",
+      "label": "Planned Due Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Planned finish — Owner: Assignee / Planner · Usage: Schedule · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "planned_end_date",
+      "label": "Planned End Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Planned finish — Owner: Project Manager · Usage: Schedule · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "planned_hours",
+      "label": "Planned Hours",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Planned effort hours — Owner: Project Manager · Usage: Planning · Jira type: Number Used in: Resource Demand & Allocation, Timesheets & Utilization.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "planned_progress",
+      "label": "Planned Progress %",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Planned progress to date — Owner: Planner · Usage: Progress reporting · Jira type: Percentage",
+      "isActive": true
+    },
+    {
+      "fieldKey": "planned_start_date",
+      "label": "Planned Start Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Planned start — Owner: Project Manager · Usage: Schedule · Jira type: Date Used in: Project Master, Schedule & WBS.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "planned_value_pv",
+      "label": "Planned Value (PV)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Budgeted value of scheduled work — Owner: Project Controls · Usage: EVM · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "pmo_owner",
+      "label": "PMO Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "PMO governance contact — Owner: PMO Lead · Usage: Governance · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "portfolio_name",
+      "label": "Portfolio Name",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Parent portfolio — Owner: Portfolio Manager · Usage: Portfolio dashboard · Jira type: Dropdown / entity link · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "post_implementation_review",
+      "label": "Post-Implementation Review",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Outcome and effectiveness review — Owner: PMO · Usage: Lessons learned · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "predecessor_tasks",
+      "label": "Predecessor Tasks",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Preceding tasks — Owner: Planner · Usage: Dependencies · Jira type: Issue links",
+      "isActive": true
+    },
+    {
+      "fieldKey": "preventive_controls",
+      "label": "Preventive Controls",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Controls to prevent event — Owner: Risk Owner · Usage: Risk response · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "primary_skill",
+      "label": "Primary Skill",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Main skill — Owner: Resource Manager · Usage: Skills search · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "priority",
+      "label": "Priority",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Priority level — Owner: Owner · Usage: RAID dashboard · Jira type: Priority · configure dropdown options when the value list is agreed Used in: RAID Common, Issue Register, Action Register, Jira Standard Fields.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "probability",
+      "label": "Probability",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Likelihood score — Owner: Risk Owner · Usage: Risk scoring · Jira type: Dropdown / score",
+      "isActive": true
+    },
+    {
+      "fieldKey": "procurement_owner",
+      "label": "Procurement Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Accountable procurement contact — Owner: Procurement Lead · Usage: Governance · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "product_owner",
+      "label": "Product Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Product decision owner — Owner: Project Manager · Usage: Agile delivery · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "production_approval",
+      "label": "Production Approval",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Production approval state — Owner: Approver · Usage: Go-live governance · Jira type: Workflow / dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "production_readiness_status",
+      "label": "Production Readiness Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Production readiness assessment — Owner: Release Manager · Usage: Go-live · Jira type: Workflow / dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "productivity_benefit",
+      "label": "Productivity Benefit",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Expected productivity benefit — Owner: Business Owner · Usage: Benefits · Jira type: Currency / number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "programme_name",
+      "label": "Programme Name",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Parent programme — Owner: Programme Manager · Usage: Programme rollup · Jira type: Dropdown / entity link · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "progress",
+      "label": "Progress %",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Work completion percentage — Owner: Assignee / report · Usage: Progress dashboard · Jira type: Number / formula",
+      "isActive": true
+    },
+    {
+      "fieldKey": "progress_variance",
+      "label": "Progress Variance %",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Actual minus planned progress — Owner: System / report · Usage: Executive dashboard · Jira type: Calculated percentage",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project",
+      "label": "Project",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Project worked on — Owner: Resource · Usage: Cost allocation · Jira type: Project link Used in: Timesheets & Utilization, Jira Standard Fields.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_programme",
+      "label": "Project / Programme",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Associated project or programme — Owner: PMO · Usage: Rollup reporting · Jira type: Project link / dropdown · configure dropdown options when the value list is agreed Used in: RAID Common, Resource Demand & Allocation, Budget Master.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_category",
+      "label": "Project Category",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Business classification — Owner: PMO · Usage: Portfolio filters · Jira type: Single-select dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_charter_reference",
+      "label": "Project Charter Reference",
+      "dataType": "URL",
+      "options": null,
+      "description": "Link to charter — Owner: Project Manager · Usage: Governance · Jira type: URL / attachment",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_closure_date",
+      "label": "Project Closure Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Formal closure date — Owner: Project Manager · Usage: Closure reporting · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_confidentiality",
+      "label": "Project Confidentiality",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Confidentiality classification — Owner: Project Manager · Usage: Access governance · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_coordinator",
+      "label": "Project Coordinator",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Coordination contact — Owner: Project Manager · Usage: Delivery support · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_description",
+      "label": "Project Description",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Project purpose and summary — Owner: Project Manager · Usage: Project overview · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_health_rag",
+      "label": "Project Health / RAG",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Red",
+        "Amber",
+        "Green status"
+      ],
+      "description": "Red/Amber/Green status — Owner: Project Manager · Usage: Executive dashboard · Jira type: Single-select dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_key_project_code",
+      "label": "Project Key / Project Code",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Unique project identifier — Owner: PMO · Usage: Project registry · Jira type: Text / Jira-generated key",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_lifecycle_stage",
+      "label": "Project Lifecycle Stage",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Initiation, planning, execution, closure etc. — Owner: PMO · Usage: Stage-gate reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_manager",
+      "label": "Project Manager",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Accountable delivery manager — Owner: PMO · Usage: Ownership · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_methodology",
+      "label": "Project Methodology",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Agile, Scrum, Waterfall, hybrid etc. — Owner: Project Manager · Usage: Delivery reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_name",
+      "label": "Project Name",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Project identity — Owner: Project Manager · Usage: Project overview · Jira type: Short text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_objectives",
+      "label": "Project Objectives",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Objectives and intended outcomes — Owner: Business Owner · Usage: Business case · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_priority",
+      "label": "Project Priority",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Relative project priority — Owner: Sponsor / PMO · Usage: Portfolio prioritization · Jira type: Priority / dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_rag_commentary",
+      "label": "Project RAG Commentary",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Narrative supporting status — Owner: Project Manager · Usage: Status report · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_repository_url",
+      "label": "Project Repository URL",
+      "dataType": "URL",
+      "options": null,
+      "description": "Project documentation repository — Owner: Project Coordinator · Usage: Documentation · Jira type: URL",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_sponsor",
+      "label": "Project Sponsor",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Executive sponsor — Owner: PMO · Usage: Governance · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_status",
+      "label": "Project Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Current lifecycle status — Owner: Project Manager · Usage: Project dashboard · Jira type: Workflow status · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "project_type",
+      "label": "Project Type",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Project classification — Owner: PMO · Usage: Portfolio filters · Jira type: Single-select dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "provider_commitment_date",
+      "label": "Provider Commitment Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Provider's committed date — Owner: Provider · Usage: Schedule · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "provider_contact",
+      "label": "Provider Contact",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Provider contact — Owner: Owner · Usage: Coordination · Jira type: User picker / text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "providing_team_organisation",
+      "label": "Providing Team / Organisation",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Provider team or organisation — Owner: Owner · Usage: Coordination · Jira type: Dropdown / text · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "purchase_order_number",
+      "label": "Purchase Order Number",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "PO reference — Owner: Procurement · Usage: Financial controls · Jira type: Text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "quality_gate",
+      "label": "Quality Gate",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Quality gate result — Owner: Quality Lead · Usage: Governance · Jira type: Workflow / dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "quality_health",
+      "label": "Quality Health",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Red",
+        "Amber",
+        "Green"
+      ],
+      "description": "Quality health — Owner: Quality Lead · Usage: Executive dashboard · Jira type: RAG dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "raid_description",
+      "label": "RAID Description",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Detailed description — Owner: Record owner · Usage: RAID register · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "raid_id",
+      "label": "RAID ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Unique RAID record — Owner: PMO / Jira · Usage: RAID register · Jira type: Auto-generated identifier",
+      "isActive": true
+    },
+    {
+      "fieldKey": "raid_title",
+      "label": "RAID Title",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Concise title — Owner: Record owner · Usage: RAID register · Jira type: Summary / short text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "raid_type",
+      "label": "RAID Type",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Risk, assumption, issue, dependency, action — Owner: PMO · Usage: RAID filtering · Jira type: Single-select dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "raised_by",
+      "label": "Raised By",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Person raising item — Owner: Reporter · Usage: Audit · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "receiving_team_organisation",
+      "label": "Receiving Team / Organisation",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Receiving team or organisation — Owner: Owner · Usage: Coordination · Jira type: Dropdown / text · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "recovery_plan",
+      "label": "Recovery Plan",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Corrective actions for at-risk project — Owner: Project Manager · Usage: Recovery governance · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "recruitment_sourcing_status",
+      "label": "Recruitment / Sourcing Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Sourcing stage — Owner: Talent Acquisition · Usage: Recruitment · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "regulatory_classification",
+      "label": "Regulatory Classification",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Applicable regulatory category — Owner: Compliance Owner · Usage: Compliance reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "rejected_hours",
+      "label": "Rejected Hours",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Hours rejected — Owner: Approver · Usage: Reconciliation · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "rejection_reason",
+      "label": "Rejection Reason",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Reason for rejection — Owner: Approver · Usage: Reconciliation · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "related_defect_incident",
+      "label": "Related Defect / Incident",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Linked defect or incident — Owner: Issue Owner · Usage: Traceability · Jira type: Issue link",
+      "isActive": true
+    },
+    {
+      "fieldKey": "related_milestone",
+      "label": "Related Milestone",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Affected milestone — Owner: Owner · Usage: Traceability · Jira type: Issue link",
+      "isActive": true
+    },
+    {
+      "fieldKey": "related_raid_items",
+      "label": "Related RAID Items",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Related records — Owner: Owner · Usage: Traceability · Jira type: Issue links",
+      "isActive": true
+    },
+    {
+      "fieldKey": "release_version",
+      "label": "Release / Version",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Target release — Owner: Release Manager · Usage: Release planning · Jira type: Version field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "release_date",
+      "label": "Release Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Actual release date — Owner: Resource Manager · Usage: Capacity · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "release_id",
+      "label": "Release ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Unique release reference — Owner: Release Manager · Usage: Release register · Jira type: Text / version",
+      "isActive": true
+    },
+    {
+      "fieldKey": "release_owner",
+      "label": "Release Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Accountable release owner — Owner: Release Manager · Usage: Governance · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "remaining_capacity_hours",
+      "label": "Remaining Capacity Hours",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Capacity less allocations — Owner: System / report · Usage: Capacity planning · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "remaining_commitment",
+      "label": "Remaining Commitment",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Open commitment balance — Owner: System / Finance · Usage: Commitments · Jira type: Calculated currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "remaining_duration",
+      "label": "Remaining Duration",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Remaining duration — Owner: Planner · Usage: Schedule · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "remaining_estimate",
+      "label": "Remaining Estimate",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Remaining effort estimate — Owner: Assignee · Usage: Planning · Jira type: Time tracking",
+      "isActive": true
+    },
+    {
+      "fieldKey": "remaining_work",
+      "label": "Remaining Work",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Remaining effort — Owner: Assignee · Usage: Time tracking · Jira type: Time estimate",
+      "isActive": true
+    },
+    {
+      "fieldKey": "renewal_date",
+      "label": "Renewal Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Renewal / notice deadline — Owner: Procurement · Usage: Renewal alerts · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "reporter",
+      "label": "Reporter",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Person reporting work — Owner: Jira · Usage: Audit · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "reporting_currency",
+      "label": "Reporting Currency",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Common reporting currency — Owner: Finance · Usage: Consolidation · Jira type: Currency code",
+      "isActive": true
+    },
+    {
+      "fieldKey": "reporting_period",
+      "label": "Reporting Period",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "EVM measurement period — Owner: Project Controls · Usage: EVM dashboard · Jira type: Month / period Used in: EVM, Executive Reporting.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "reporting_week",
+      "label": "Reporting Week",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Week or period ending — Owner: Resource · Usage: Timesheet · Jira type: Date / period",
+      "isActive": true
+    },
+    {
+      "fieldKey": "requested_role",
+      "label": "Requested Role",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Role requested — Owner: Requestor · Usage: Demand matching · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "requesting_manager",
+      "label": "Requesting Manager",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Demand requestor — Owner: Project Manager · Usage: Accountability · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "required_end_date",
+      "label": "Required End Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Expected end date — Owner: Requestor · Usage: Capacity planning · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "required_fte",
+      "label": "Required FTE",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "FTE demand — Owner: Requestor · Usage: Capacity planning · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "required_skills",
+      "label": "Required Skills",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Required skills — Owner: Requestor · Usage: Demand matching · Jira type: Multi-select dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "required_start_date",
+      "label": "Required Start Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Need-by start date — Owner: Requestor · Usage: Capacity planning · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "required_by_date",
+      "label": "Required-By Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Date dependency is needed — Owner: Owner · Usage: Schedule · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "residual_impact",
+      "label": "Residual Impact",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Impact after controls — Owner: Risk Owner · Usage: Residual scoring · Jira type: Dropdown / score",
+      "isActive": true
+    },
+    {
+      "fieldKey": "residual_probability",
+      "label": "Residual Probability",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Likelihood after controls — Owner: Risk Owner · Usage: Residual scoring · Jira type: Dropdown / score",
+      "isActive": true
+    },
+    {
+      "fieldKey": "residual_risk_score",
+      "label": "Residual Risk Score",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Residual probability × impact — Owner: System / PMO · Usage: Heatmap · Jira type: Formula / number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resolution",
+      "label": "Resolution",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Resolution state — Owner: Workflow · Usage: Closure reporting · Jira type: System field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resolution_recovery_plan",
+      "label": "Resolution / Recovery Plan",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Plan to unblock dependency — Owner: Owner · Usage: Recovery · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resolution_code",
+      "label": "Resolution Code",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Reason / category of resolution — Owner: Issue Owner · Usage: Analysis · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resolution_due_date",
+      "label": "Resolution Due Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Target resolution date — Owner: Issue Owner · Usage: Overdue tracking · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resolution_plan",
+      "label": "Resolution Plan",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Plan to resolve issue — Owner: Issue Owner · Usage: Resolution · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resolution_summary",
+      "label": "Resolution Summary",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "How item was resolved — Owner: Owner · Usage: Closure · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resolved_date",
+      "label": "Resolved Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Date resolved — Owner: Issue Owner · Usage: Closure · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resource",
+      "label": "Resource",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Person reporting time — Owner: Resource · Usage: Timesheet · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resource_assigned",
+      "label": "Resource Assigned",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Assigned resource — Owner: Resource Manager · Usage: Allocation · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resource_confirmation_date",
+      "label": "Resource Confirmation Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Date confirmed — Owner: Resource Manager · Usage: Demand closure · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resource_demand_fte",
+      "label": "Resource Demand FTE",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Total FTE demand — Owner: System / report · Usage: Resource dashboard · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resource_gap_fte",
+      "label": "Resource Gap FTE",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Demand less supply — Owner: System / report · Usage: Resource dashboard · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resource_health",
+      "label": "Resource Health",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Red",
+        "Amber",
+        "Green"
+      ],
+      "description": "Resource health — Owner: Resource Manager · Usage: Executive dashboard · Jira type: RAG dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resource_id",
+      "label": "Resource ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Unique resource identifier — Owner: Resource Manager · Usage: Resource register · Jira type: Unique text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resource_impact_fte",
+      "label": "Resource Impact (FTE)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Estimated resource delta — Owner: Resource Manager · Usage: Change control · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resource_manager",
+      "label": "Resource Manager",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Line or resource manager — Owner: PMO · Usage: Accountability · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resource_name",
+      "label": "Resource Name",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Resource name — Owner: Resource Manager · Usage: Resource register · Jira type: User picker / text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resource_role",
+      "label": "Resource Role",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Role in delivery — Owner: Resource Manager · Usage: Capacity planning · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "resource_supply_fte",
+      "label": "Resource Supply FTE",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Available FTE supply — Owner: System / report · Usage: Resource dashboard · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "return_on_investment_roi",
+      "label": "Return on Investment (ROI)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Net benefit divided by investment, per policy — Owner: Finance · Usage: Investment appraisal · Jira type: Calculated percentage",
+      "isActive": true
+    },
+    {
+      "fieldKey": "review_committee",
+      "label": "Review Committee",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Committee or board — Owner: PMO · Usage: Governance · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "revised_budget",
+      "label": "Revised Budget",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Latest revised budget — Owner: Finance · Usage: Budget control · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "risk_acceptance_date",
+      "label": "Risk Acceptance Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Date risk accepted — Owner: Risk Owner · Usage: Audit · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "risk_appetite_tolerance",
+      "label": "Risk Appetite / Tolerance",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Threshold or tolerance — Owner: Risk Committee · Usage: Governance · Jira type: Dropdown / number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "risk_category",
+      "label": "Risk Category",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Strategic, delivery, technical, financial, etc. — Owner: PMO · Usage: Risk analysis · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "risk_cause",
+      "label": "Risk Cause",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Underlying cause — Owner: Risk Owner · Usage: Risk analysis · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "risk_consequence",
+      "label": "Risk Consequence",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Potential consequence — Owner: Risk Owner · Usage: Risk analysis · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "risk_event",
+      "label": "Risk Event",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Potential event — Owner: Risk Owner · Usage: Risk analysis · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "risk_health",
+      "label": "Risk Health",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Red",
+        "Amber",
+        "Green"
+      ],
+      "description": "Risk health — Owner: Risk Owner · Usage: Executive dashboard · Jira type: RAG dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "risk_impact",
+      "label": "Risk Impact",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Risk implications — Owner: Risk Owner · Usage: Change control · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "risk_rating",
+      "label": "Risk Rating",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical"
+      ],
+      "description": "Low / Medium / High / Critical — Owner: Risk Owner · Usage: Risk dashboard · Jira type: Dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "risk_response_strategy",
+      "label": "Risk Response Strategy",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Avoid",
+        "Mitigate",
+        "Transfer",
+        "Accept"
+      ],
+      "description": "Avoid / Mitigate / Transfer / Accept — Owner: Risk Owner · Usage: Response planning · Jira type: Dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "risk_statement",
+      "label": "Risk Statement",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Risk stated as cause-event-consequence — Owner: Risk Owner · Usage: Risk register · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "risk_trend",
+      "label": "Risk Trend",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Increasing",
+        "Stable",
+        "Decreasing"
+      ],
+      "description": "Increasing / Stable / Decreasing — Owner: Risk Owner · Usage: Trend reporting · Jira type: Dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "role",
+      "label": "Role",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Stakeholder role — Owner: Project Manager · Usage: Stakeholder analysis · Jira type: Text / dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "rollback_plan",
+      "label": "Rollback Plan",
+      "dataType": "URL",
+      "options": null,
+      "description": "Rollback steps and reference — Owner: Technical Lead · Usage: Operational readiness · Jira type: URL / multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "root_cause",
+      "label": "Root Cause",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Known or suspected root cause — Owner: Issue Owner · Usage: Problem management · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "schedule_exposure_days",
+      "label": "Schedule Exposure (Days)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Potential schedule impact — Owner: Project Manager · Usage: Schedule risk · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "schedule_float",
+      "label": "Schedule Float",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Available float — Owner: Planner · Usage: Schedule analysis · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "schedule_float_buffer_days",
+      "label": "Schedule Float / Buffer Days",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Available schedule buffer — Owner: Planner · Usage: Schedule analysis · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "schedule_health",
+      "label": "Schedule Health",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Red",
+        "Amber",
+        "Green"
+      ],
+      "description": "Schedule health — Owner: Project Manager · Usage: Executive dashboard · Jira type: RAG dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "schedule_impact",
+      "label": "Schedule Impact",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Estimated schedule impact — Owner: Project Manager · Usage: Schedule reporting · Jira type: Number / days",
+      "isActive": true
+    },
+    {
+      "fieldKey": "schedule_impact_days",
+      "label": "Schedule Impact (Days)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Estimated schedule delta — Owner: Planner · Usage: Change control · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "schedule_performance_index_spi",
+      "label": "Schedule Performance Index (SPI)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "EV divided by PV — Owner: System / report · Usage: EVM · Jira type: Calculated ratio",
+      "isActive": true
+    },
+    {
+      "fieldKey": "schedule_variance",
+      "label": "Schedule Variance %",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Schedule variance ratio — Owner: System / planner · Usage: Schedule health · Jira type: Percentage / formula",
+      "isActive": true
+    },
+    {
+      "fieldKey": "schedule_variance_days",
+      "label": "Schedule Variance (Days)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Actual or forecast finish versus baseline — Owner: System / planner · Usage: Schedule health · Jira type: Number / formula",
+      "isActive": true
+    },
+    {
+      "fieldKey": "schedule_variance_sv",
+      "label": "Schedule Variance (SV)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "EV minus PV — Owner: System / report · Usage: EVM · Jira type: Calculated currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "scope_exclusions",
+      "label": "Scope Exclusions",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Explicit exclusions — Owner: Project Manager · Usage: Scope control · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "scope_health",
+      "label": "Scope Health",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Red",
+        "Amber",
+        "Green"
+      ],
+      "description": "Scope health — Owner: Project Manager · Usage: Executive dashboard · Jira type: RAG dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "scope_impact",
+      "label": "Scope Impact",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Scope implications — Owner: Project Manager · Usage: Change control · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "scope_inclusions",
+      "label": "Scope Inclusions",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Included scope — Owner: Project Manager · Usage: Scope control · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "secondary_skills",
+      "label": "Secondary Skills",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Additional skills — Owner: Resource Manager · Usage: Skills search · Jira type: Multi-select dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "security_assessment_status",
+      "label": "Security Assessment Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Security review state — Owner: Security Lead · Usage: Security reporting · Jira type: Workflow / dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "security_test_status",
+      "label": "Security Test Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Security testing outcome — Owner: Security Lead · Usage: Quality gate · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "seniority_grade_required",
+      "label": "Seniority / Grade Required",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Required grade — Owner: Requestor · Usage: Demand matching · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "service_transition_status",
+      "label": "Service Transition Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Service transition progress — Owner: Service Owner · Usage: Handover · Jira type: Workflow / dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "severity",
+      "label": "Severity",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Severity category — Owner: Owner · Usage: RAID dashboard · Jira type: Dropdown · configure dropdown options when the value list is agreed Used in: RAID Common, Issue Register.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "short_text",
+      "label": "Short text",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Define max length and validation — Jira type: Text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "sign_off_date",
+      "label": "Sign-off Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Formal sign-off date — Owner: Business Owner · Usage: Audit · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "sign_off_owner",
+      "label": "Sign-off Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Acceptance authority — Owner: Business Owner · Usage: Governance · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "single_select_dropdown",
+      "label": "Single-select dropdown",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Govern allowed values — Jira type: Select list (single choice) · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "skill_proficiency",
+      "label": "Skill Proficiency",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Skill level — Owner: Resource Manager · Usage: Demand matching · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "sla_resolution_target",
+      "label": "SLA / Resolution Target",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Target resolution time — Owner: PMO · Usage: SLA reporting · Jira type: Number / dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "software_licensing_budget",
+      "label": "Software / Licensing Budget",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Software costs — Owner: Finance · Usage: Cost breakdown · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "solution_architect",
+      "label": "Solution Architect",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Architecture owner — Owner: Technical Lead · Usage: Architecture governance · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "solution_pattern",
+      "label": "Solution Pattern",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Selected architecture pattern — Owner: Architect · Usage: Architecture reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "sprint",
+      "label": "Sprint",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Sprint association — Owner: Scrum Master · Usage: Agile reporting · Jira type: Agile field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "sprint_iteration",
+      "label": "Sprint / Iteration",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Agile iteration — Owner: Scrum Master · Usage: Agile reporting · Jira type: Sprint field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "stakeholder_name",
+      "label": "Stakeholder Name",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Stakeholder identity — Owner: Project Manager · Usage: Stakeholder register · Jira type: User picker / text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "standard_hours_per_day",
+      "label": "Standard Hours per Day",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Standard daily hours — Owner: Resource Manager · Usage: Capacity planning · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "standard_hours_per_week",
+      "label": "Standard Hours per Week",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Standard weekly hours — Owner: Resource Manager · Usage: Capacity planning · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "statement_of_work_reference",
+      "label": "Statement of Work Reference",
+      "dataType": "URL",
+      "options": null,
+      "description": "SOW document reference — Owner: Procurement · Usage: Contract governance · Jira type: URL / text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "status",
+      "label": "Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Lifecycle status — Owner: Owner · Usage: RAID dashboard · Jira type: Workflow status · configure dropdown options when the value list is agreed Used in: RAID Common, Action Register, Jira Standard Fields.",
+      "isActive": true
+    },
+    {
+      "fieldKey": "status_report_owner",
+      "label": "Status Report Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Report owner — Owner: PMO · Usage: Governance · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "strategic_objective",
+      "label": "Strategic Objective",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Strategic alignment — Owner: Sponsor · Usage: Portfolio prioritization · Jira type: Dropdown / text · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "submitted_date",
+      "label": "Submitted Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Submission timestamp — Owner: Resource · Usage: Compliance · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "success_criteria",
+      "label": "Success Criteria",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Measurable acceptance/success criteria — Owner: Business Owner · Usage: Benefits and closure · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "successor_tasks",
+      "label": "Successor Tasks",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Following tasks — Owner: Planner · Usage: Dependencies · Jira type: Issue links",
+      "isActive": true
+    },
+    {
+      "fieldKey": "summary",
+      "label": "Summary",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Short title of work item — Owner: Assignee / Reporter · Usage: Backlog and boards · Jira type: System field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "supplier_risk_rating",
+      "label": "Supplier Risk Rating",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Supplier risk assessment — Owner: Vendor Manager · Usage: Risk reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "support_owner",
+      "label": "Support Owner",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Operational support owner — Owner: Service Owner · Usage: Handover · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "target_benefit_value",
+      "label": "Target Benefit Value",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Target benefit — Owner: Benefit Owner · Usage: Benefits · Jira type: Currency / number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "target_release_date",
+      "label": "Target Release Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Target release date — Owner: Release Manager · Usage: Release planning · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "target_resolution_date",
+      "label": "Target Resolution Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Target resolution date — Owner: Owner · Usage: Overdue reporting · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "task_work_item",
+      "label": "Task / Work Item",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Work performed — Owner: Resource · Usage: Traceability · Jira type: Issue link",
+      "isActive": true
+    },
+    {
+      "fieldKey": "tax_gst_budget",
+      "label": "Tax / GST Budget",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Tax allowance — Owner: Finance · Usage: Cost breakdown · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "technical_approval_status",
+      "label": "Technical Approval Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Technical sign-off state — Owner: Architect · Usage: Governance · Jira type: Workflow · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "technical_debt",
+      "label": "Technical Debt",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Known technical debt measure — Owner: Technical Lead · Usage: Technical governance · Jira type: Currency / number / text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "technical_lead",
+      "label": "Technical Lead",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Technical delivery lead — Owner: Delivery Manager · Usage: Delivery reporting · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "technology_skills",
+      "label": "Technology Skills",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Technology skill set — Owner: Resource Manager · Usage: Skills search · Jira type: Multi-select dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "technology_stack",
+      "label": "Technology Stack",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Technology components — Owner: Technical Lead · Usage: Technology inventory · Jira type: Multi-select dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "test_cases_executed",
+      "label": "Test Cases Executed",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Executed test cases — Owner: Test Lead · Usage: Quality metrics · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "test_cases_planned",
+      "label": "Test Cases Planned",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Planned test cases — Owner: Test Lead · Usage: Quality metrics · Jira type: Number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "test_plan_reference",
+      "label": "Test Plan Reference",
+      "dataType": "URL",
+      "options": null,
+      "description": "Test plan link — Owner: Test Lead · Usage: Quality · Jira type: URL / attachment",
+      "isActive": true
+    },
+    {
+      "fieldKey": "test_strategy",
+      "label": "Test Strategy",
+      "dataType": "URL",
+      "options": null,
+      "description": "Testing approach — Owner: Test Lead · Usage: Quality · Jira type: Multi-line text / URL",
+      "isActive": true
+    },
+    {
+      "fieldKey": "time_spent",
+      "label": "Time Spent",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Logged effort — Owner: Assignee · Usage: Actual effort · Jira type: Time tracking",
+      "isActive": true
+    },
+    {
+      "fieldKey": "time_zone",
+      "label": "Time Zone",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Working time zone — Owner: Resource Manager · Usage: Planning · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "timesheet_id",
+      "label": "Timesheet ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Timesheet record identifier — Owner: System · Usage: Timesheet register · Jira type: Unique identifier",
+      "isActive": true
+    },
+    {
+      "fieldKey": "timesheet_status",
+      "label": "Timesheet Status",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Draft",
+        "Submitted",
+        "Approved",
+        "Rejected"
+      ],
+      "description": "Draft / Submitted / Approved / Rejected — Owner: Resource / Approver · Usage: Compliance · Jira type: Workflow / dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "timesheet_variance",
+      "label": "Timesheet Variance",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Actual less planned hours — Owner: System / report · Usage: Variance · Jira type: Calculated number",
+      "isActive": true
+    },
+    {
+      "fieldKey": "to_complete_performance_index_tcpi",
+      "label": "To-Complete Performance Index (TCPI)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Required future cost efficiency — Owner: System / Finance · Usage: EVM · Jira type: Calculated ratio",
+      "isActive": true
+    },
+    {
+      "fieldKey": "total_actual_cost",
+      "label": "Total Actual Cost",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Sum of actual cost categories — Owner: System / Finance · Usage: Financial dashboard · Jira type: Calculated currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "total_investment",
+      "label": "Total Investment",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Total investment amount — Owner: Finance · Usage: Business case · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "training_required",
+      "label": "Training Required",
+      "dataType": "BOOLEAN",
+      "options": null,
+      "description": "Training need flag — Owner: Change Manager · Usage: Readiness · Jira type: Checkbox",
+      "isActive": true
+    },
+    {
+      "fieldKey": "travel_expenses_budget",
+      "label": "Travel & Expenses Budget",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Travel and expenses — Owner: Finance · Usage: Cost breakdown · Jira type: Currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "trigger_early_warning_indicator",
+      "label": "Trigger / Early Warning Indicator",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Signal that risk may occur — Owner: Risk Owner · Usage: Monitoring · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "uat_status",
+      "label": "UAT Status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "UAT progress and sign-off — Owner: Business Owner · Usage: Readiness · Jira type: Workflow / dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "updated",
+      "label": "Updated",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Last update timestamp — Owner: Jira · Usage: Audit · Jira type: System field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "upstream_project_task",
+      "label": "Upstream Project / Task",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Providing item — Owner: Owner · Usage: Traceability · Jira type: Issue / project link",
+      "isActive": true
+    },
+    {
+      "fieldKey": "url",
+      "label": "URL",
+      "dataType": "URL",
+      "options": null,
+      "description": "Validate URL format — Jira type: URL field or text with validation",
+      "isActive": true
+    },
+    {
+      "fieldKey": "user_picker",
+      "label": "User picker",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Use directory-backed identities — Jira type: User field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "utilization",
+      "label": "Utilization %",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Productive hours divided by available hours — Owner: System / report · Usage: Resource dashboard · Jira type: Calculated percentage",
+      "isActive": true
+    },
+    {
+      "fieldKey": "validated_by",
+      "label": "Validated By",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Person confirming assumption — Owner: Owner · Usage: Audit · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "validation_date",
+      "label": "Validation Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Date validated — Owner: Owner · Usage: Audit · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "validation_due_date",
+      "label": "Validation Due Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Deadline to validate — Owner: Owner · Usage: Reminders · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "validation_evidence",
+      "label": "Validation Evidence",
+      "dataType": "URL",
+      "options": null,
+      "description": "Evidence supporting validation — Owner: Owner · Usage: Audit · Jira type: URL / attachment",
+      "isActive": true
+    },
+    {
+      "fieldKey": "validation_method",
+      "label": "Validation Method",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "How assumption will be tested — Owner: Owner · Usage: Validation · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "validation_status",
+      "label": "Validation Status",
+      "dataType": "DROPDOWN",
+      "options": [
+        "Unvalidated",
+        "Validated",
+        "Invalidated",
+        "Deferred"
+      ],
+      "description": "Unvalidated / Validated / Invalidated / Deferred — Owner: Owner · Usage: Governance · Jira type: Dropdown",
+      "isActive": true
+    },
+    {
+      "fieldKey": "variance_at_completion_vac",
+      "label": "Variance at Completion (VAC)",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "BAC minus EAC — Owner: System / Finance · Usage: EVM · Jira type: Calculated currency",
+      "isActive": true
+    },
+    {
+      "fieldKey": "vendor_supplier",
+      "label": "Vendor / Supplier",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Supplier for external resource — Owner: Procurement · Usage: Vendor reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "vendor_name",
+      "label": "Vendor Name",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Supplier name — Owner: Procurement · Usage: Vendor register · Jira type: Dropdown / text · configure dropdown options when the value list is agreed",
+      "isActive": true
+    },
+    {
+      "fieldKey": "vendor_performance_rating",
+      "label": "Vendor Performance Rating",
+      "dataType": "NUMBER",
+      "options": null,
+      "description": "Vendor performance score — Owner: Vendor Manager · Usage: Supplier management · Jira type: Dropdown / score",
+      "isActive": true
+    },
+    {
+      "fieldKey": "verified_by",
+      "label": "Verified By",
+      "dataType": "USER_LOOKUP",
+      "options": null,
+      "description": "Person confirming completion — Owner: Project Manager · Usage: Control · Jira type: User picker",
+      "isActive": true
+    },
+    {
+      "fieldKey": "wbs_id",
+      "label": "WBS ID",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Work breakdown identifier — Owner: Planner · Usage: WBS · Jira type: Text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "work_date",
+      "label": "Work Date",
+      "dataType": "DATE",
+      "options": null,
+      "description": "Date work performed — Owner: Resource · Usage: Timesheet · Jira type: Date",
+      "isActive": true
+    },
+    {
+      "fieldKey": "work_estimate",
+      "label": "Work Estimate",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Estimated work — Owner: Assignee · Usage: Time tracking · Jira type: Time estimate",
+      "isActive": true
+    },
+    {
+      "fieldKey": "workaround_available",
+      "label": "Workaround Available",
+      "dataType": "BOOLEAN",
+      "options": null,
+      "description": "Whether a workaround exists — Owner: Issue Owner · Usage: Resolution · Jira type: Checkbox",
+      "isActive": true
+    },
+    {
+      "fieldKey": "workaround_description",
+      "label": "Workaround Description",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Temporary workaround — Owner: Issue Owner · Usage: Resolution · Jira type: Multi-line text",
+      "isActive": true
+    },
+    {
+      "fieldKey": "workflow_status",
+      "label": "Workflow status",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Configure workflow transitions — Jira type: Status field",
+      "isActive": true
+    },
+    {
+      "fieldKey": "working_calendar",
+      "label": "Working Calendar",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Working days and holidays — Owner: Resource Manager · Usage: Capacity planning · Jira type: Calendar reference",
+      "isActive": true
+    },
+    {
+      "fieldKey": "worklog",
+      "label": "Worklog",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Work entries — Owner: Assignee · Usage: Timesheets · Jira type: Time tracking",
+      "isActive": true
+    },
+    {
+      "fieldKey": "workstream",
+      "label": "Workstream",
+      "dataType": "TEXT",
+      "options": null,
+      "description": "Affected workstream — Owner: Project Manager · Usage: Workstream reporting · Jira type: Dropdown · configure dropdown options when the value list is agreed Used in: RAID Common, Timesheets & Utilization, Schedule & WBS.",
+      "isActive": true
+    }
+  ],
+  "tabs": []
+}

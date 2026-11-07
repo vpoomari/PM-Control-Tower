@@ -16,9 +16,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ProjectPicker, useControlProjectId, useControlProjectOptions } from "@/views/control/shared/pickers";
 import { hasPerm, useMe } from "@/views/execute/shared/pickers";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
 import { Gavel, Stamp } from "lucide-react";
 
 interface Gate {
+  [key: string]: unknown;
   id: string; projectId: string; code: string; sequence: number; name: string;
   description: string | null; criteria: string | null; plannedDate: string | null;
   decisionStatus: string; decisionDate: string | null; approverName: string | null;
@@ -43,6 +46,9 @@ export default function GatesView() {
 
   const gates = useApi<{ gates: Gate[] }>(projectId ? `/api/gates?projectId=${projectId}` : null);
   useRealtimeRefetch(gates.refetch, ["governance:changed"]);
+
+  // --- Field Dictionary: assignments + bulk values for the visible gates ---
+  const fields = useModuleFieldsHandle("stage_gate", (gates.data?.gates ?? []).map((g) => g.id));
 
   const [target, setTarget] = useState<Gate | null>(null);
   const [decision, setDecision] = useState<string>("PASSED");
@@ -90,7 +96,10 @@ export default function GatesView() {
         title="Stage Gates"
         subtitle="Governed progression checkpoints — evidence in, decision out."
         breadcrumb={["Home", "Control", "Stage Gates"]}
-        actions={<ProjectPicker value={projectId} onChange={setProjectId} options={options} />}
+        actions={<>
+          {fields.actions}
+          <ProjectPicker value={projectId} onChange={setProjectId} options={options} />
+        </>}
       />
 
       {gates.loading && !gates.data ? <LoadingBlock label="Loading gates…" /> :
@@ -127,7 +136,12 @@ export default function GatesView() {
                 <SectionCard key={g.id}
                   title={g.name}
                   description={g.code}
-                  actions={<StatusChip status={g.decisionStatus} />}
+                  actions={
+                    <div className="flex items-center gap-2">
+                      <StatusChip status={g.decisionStatus} />
+                      <RecordFieldsButton moduleKey="stage_gate" recordId={g.id} label={g.code} onSaved={gates.refetch} />
+                    </div>
+                  }
                 >
                   <div className="space-y-3">
                     {g.criteria && <p className="text-xs text-slate-600 leading-relaxed"><span className="font-semibold text-slate-500 uppercase text-[10px] block mb-0.5">Criteria</span>{g.criteria}</p>}

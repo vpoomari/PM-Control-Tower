@@ -30,7 +30,7 @@ export const GET = withApi(async (ctx) => {
   // Programs with their projects + direct (program-less) projects of this portfolio
   const [owner, programs, directProjects] = await Promise.all([
     portfolio.ownerId
-      ? db.user.findUnique({ where: { id: portfolio.ownerId }, select: { id: true, name: true, email: true, title: true, avatarColor: true } })
+      ? db.user.findUnique({ where: { id: portfolio.ownerId }, select: { id: true, name: true, email: true, title: true, avatarColor: true, avatarUrl: true } })
       : Promise.resolve(null),
     db.program.findMany({
       where: { portfolioId: id },

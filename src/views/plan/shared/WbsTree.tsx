@@ -13,9 +13,13 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { num } from "@/lib/constants";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import { customFieldColumns } from "@/components/fields/custom-columns";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
 import { FolderTree, Plus, Pencil, Trash2 } from "lucide-react";
 
 interface WbsNode {
+  [key: string]: unknown;
   id: string;
   parentId: string | null;
   code: string;
@@ -64,6 +68,10 @@ export default function WbsTree({ projectId }: { projectId: string }) {
   const [saving, setSaving] = useState(false);
 
   const rows = useMemo(() => (wbs.data ? flatten(wbs.data.tree) : []), [wbs.data]);
+
+  // --- Field Dictionary: assignments + bulk values for the visible WBS nodes ---
+  const fields = useModuleFieldsHandle("wbs_node", rows.map((r) => r.node.id));
+  const cfCols = customFieldColumns<WbsNode>(fields.tableColumns, fields.values);
 
   const openCreate = (parentId: string | null) => {
     setForm({ parentId, name: "", nodeType: "WORK_PACKAGE", ownerName: "", plannedHours: "", description: "" });
@@ -127,11 +135,14 @@ export default function WbsTree({ projectId }: { projectId: string }) {
   return (
     <SectionCard
       title="Work Breakdown Structure"
-      description={`${data?.flatCount ?? 0} nodes · ${num(totals.planned, 0)}h planned / ${num(totals.actual, 0)}h actual`}
+      description={`${data?.flatCount ?? 0} nodes · ${num(totals.planned, 0)}h planned / ${num(totals.actual, 0)}h actual · double-click a node to edit`}
       actions={(
-        <Button size="sm" className="h-8" onClick={() => openCreate(null)}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Add root node
-        </Button>
+        <>
+          {fields.actions}
+          <Button size="sm" className="h-8" onClick={() => openCreate(null)}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Add root node
+          </Button>
+        </>
       )}
     >
       {!rows.length ? (
@@ -151,12 +162,13 @@ export default function WbsTree({ projectId }: { projectId: string }) {
                 <th className="px-3 py-2.5 font-medium text-right">Planned h</th>
                 <th className="px-3 py-2.5 font-medium text-right">Actual h</th>
                 <th className="px-3 py-2.5 font-medium w-40">Progress</th>
+                {cfCols.map((c) => <th key={c.key} className="px-3 py-2.5 font-medium">{c.header}</th>)}
                 <th className="px-3 py-2.5 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {rows.map(({ node, depth }) => (
-                <tr key={node.id} className="border-b border-slate-100 last:border-0 hover:bg-blue-50/40">
+                <tr key={node.id} onDoubleClick={() => openEdit(node)} title="Double-click to edit" className="border-b border-slate-100 last:border-0 hover:bg-blue-50/40">
                   <td className="px-3 py-2">
                     <div className="flex items-center" style={{ paddingLeft: depth * 20 }}>
                       {node.children?.length > 0 && <FolderTree className="h-3.5 w-3.5 text-slate-400 mr-1.5 shrink-0" />}
@@ -179,7 +191,9 @@ export default function WbsTree({ projectId }: { projectId: string }) {
                       <span className="text-[11px] tabular-nums text-slate-500 w-9 text-right">{Math.round(node.taskRollup?.avgProgress ?? node.progress)}%</span>
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                  {cfCols.map((c) => <td key={c.key} className="px-3 py-2 text-slate-700 align-middle">{c.render?.(node)}</td>)}
+                  <td className="px-3 py-2 text-right whitespace-nowrap" onDoubleClick={(e) => e.stopPropagation()}>
+                    <RecordFieldsButton moduleKey="wbs_node" recordId={node.id} label={`${node.code} ${node.name}`} onSaved={fields.refetch} />
                     <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Add child under ${node.code}`} onClick={() => openCreate(node.id)}>
                       <Plus className="h-3.5 w-3.5 text-slate-500" />
                     </Button>

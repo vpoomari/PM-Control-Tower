@@ -8,12 +8,14 @@ import type { Role } from "@prisma/client";
 import { db } from "@/lib/db";
 import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 import { writeAudit } from "@/lib/audit";
+import { isAvatarUrl } from "@/lib/avatars";
 
 const patchSchema = z.object({
   isActive: z.boolean().optional(),
   title: z.string().max(120).nullable().optional(),
   department: z.string().max(120).nullable().optional(),
   roleCode: z.string().max(40).optional(),
+  avatarUrl: z.string().nullable().optional(),
 });
 
 async function countActiveAdmins(): Promise<number> {
@@ -28,7 +30,7 @@ export const GET = withApi(async (ctx) => {
     where: { id },
     select: {
       id: true, email: true, name: true, title: true, department: true, phone: true,
-      avatarColor: true, isActive: true, isSuperAdmin: true, lastLoginAt: true,
+      avatarColor: true, avatarUrl: true, isActive: true, isSuperAdmin: true, lastLoginAt: true,
       failedLogins: true, lockedUntil: true, createdAt: true,
       userRoles: { select: { assignedAt: true, role: { select: { id: true, code: true, name: true, level: true, isSystem: true } } } },
       ownedProjects: { select: { id: true, code: true, name: true, ragStatus: true } },
@@ -50,9 +52,12 @@ export const PATCH = withApi(async (ctx) => {
   if (!user) throw new ApiError(404, "User not found");
   const body = await parseBody(ctx.req, patchSchema);
   if (Object.keys(body).length === 0) throw new ApiError(400, "No fields to update");
+  if (body.avatarUrl !== undefined && body.avatarUrl !== null && !isAvatarUrl(body.avatarUrl)) {
+    throw new ApiError(400, "Choose an avatar from the available set");
+  }
 
   const before = {
-    isActive: user.isActive, title: user.title,
+    isActive: user.isActive, title: user.title, avatarUrl: user.avatarUrl,
     roleCodes: user.userRoles.map((ur) => ur.role.code),
   };
 
@@ -80,8 +85,9 @@ export const PATCH = withApi(async (ctx) => {
         ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.department !== undefined ? { department: body.department } : {}),
+        ...(body.avatarUrl !== undefined ? { avatarUrl: body.avatarUrl } : {}),
       },
-      select: { id: true, email: true, name: true, title: true, isActive: true, userRoles: { select: { role: { select: { code: true, name: true } } } } },
+      select: { id: true, email: true, name: true, title: true, avatarUrl: true, isActive: true, userRoles: { select: { role: { select: { code: true, name: true } } } } },
     });
   });
 
@@ -89,7 +95,7 @@ export const PATCH = withApi(async (ctx) => {
     userId: ctx.session.id, userName: ctx.session.name, role: ctx.session.roles[0],
     action: "UPDATE", entityType: "User", entityId: id, entityName: user.name,
     before,
-    after: { isActive: updated.isActive, title: updated.title, roleCodes: updated.userRoles.map((ur) => ur.role.code) },
+    after: { isActive: updated.isActive, title: updated.title, avatarUrl: updated.avatarUrl, roleCodes: updated.userRoles.map((ur) => ur.role.code) },
     ipAddress: ctx.ip, userAgent: ctx.req.headers.get("user-agent"),
     severity: "WARNING",
     context: body.roleCode !== undefined ? "Role change" : "Profile update",

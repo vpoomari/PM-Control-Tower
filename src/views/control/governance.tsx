@@ -7,7 +7,7 @@ import { api, useApi, useRealtimeRefetch } from "@/lib/client";
 import { fmtDateTime } from "@/lib/constants";
 import {
   PageHeader, SectionCard, StatusChip, SeverityDot, LoadingBlock, ErrorBlock, EmptyState, DataTable, Column,
-  ConfirmButton, Button, Input,
+  ConfirmButton, Button, Input, cn,
 } from "@/components/pmct/kit";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -17,7 +17,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ProjectPicker, useControlProjectOptions, type ProjectOption } from "@/views/control/shared/pickers";
-import { Pencil, Plus, Play, Trash2, ShieldCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import { customFieldColumns, CustomFieldValueCell } from "@/components/fields/custom-columns";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
+import { Pencil, Plus, Play, Trash2, ShieldCheck, Landmark, GitBranch, Truck, Coins, Radar } from "lucide-react";
 
 const RULE_METRICS = ["CPI", "SPI", "EAC", "BUDGET_UTILIZATION", "HEALTH_SCORE", "COST_VARIANCE", "SCHEDULE_VARIANCE_DAYS", "OPEN_RISKS", "OPEN_ISSUES"] as const;
 const RULE_OPERATORS = ["LT", "LTE", "GT", "GTE", "EQ"] as const;
@@ -31,6 +35,7 @@ interface Rule {
   executionCount: number; lastTriggeredAt: string | null; createdAt: string;
 }
 interface Alert {
+  [key: string]: unknown;
   id: string; projectId: string | null; alertType: string; severity: string; title: string;
   message: string; metricValue: number | null; threshold: number | null; status: string;
   source: string; createdAt: string;
@@ -41,6 +46,115 @@ const emptyRule = {
   name: "", description: "", metric: "CPI", operator: "LT", threshold: "0.9", severity: "WARNING",
   scopeType: "GLOBAL", scopeId: "", isActive: true, actionNotify: true, actionInbox: true, actionRecalcHealth: false,
 };
+
+// ---- Governance framework (PMO control baseline) ----
+// The 15 controls the organisation governs by, grouped into four domains. Each
+// control is mapped to the PM Control Tower module that operationalises it.
+interface FrameworkControl {
+  n: number;
+  title: string;
+  rule: string;
+  module: string;
+  href: string;
+}
+interface FrameworkDomain {
+  key: string;
+  label: string;
+  icon: typeof Landmark;
+  accent: string;
+  controls: FrameworkControl[];
+}
+
+const FRAMEWORK: FrameworkDomain[] = [
+  {
+    key: "ppm", label: "Project & Program Management", icon: Landmark, accent: "text-blue-600 bg-blue-50 border-blue-100",
+    controls: [
+      { n: 1, title: "Standardized Stage-Gating", rule: "Every project must pass through formal stage-gate reviews (e.g., Initiation, Planning, Execution, Closure) with signed approvals before funding and resources are released for the next phase.", module: "Stage Gates", href: "#/gates" },
+      { n: 2, title: "Baselined Change Control", rule: "Any deviation from the baselined scope, schedule, or cost requires a formal Change Request (CR) reviewed and approved by the Change Control Board (CCB) or Steering Committee.", module: "Change Control", href: "#/changes" },
+      { n: 3, title: "Executive Status Cadence", rule: "Standardized RAG (Red, Amber, Green) status reports must be published weekly, focusing on milestone progress, critical escalations, and financial health, eliminating subjective progress reporting.", module: "Health", href: "#/health" },
+    ],
+  },
+  {
+    key: "delivery", label: "Delivery Management", icon: Truck, accent: "text-emerald-600 bg-emerald-50 border-emerald-100",
+    controls: [
+      { n: 4, title: "Strict Definition of Done (DoD)", rule: "Deliverables cannot be marked complete or transitioned to operations until they meet predefined quality metrics, compliance standards, and stakeholder sign-off criteria.", module: "Tasks", href: "#/tasks" },
+      { n: 5, title: "Resource Capacity Baselining", rule: "Resource allocations must be mapped against actual capacity, ensuring no critical path activities are dependent on a single point of failure or over-allocated personnel.", module: "Resources", href: "#/resources" },
+      { n: 6, title: "Value-Driven Milestone Tracking", rule: "Programs must demonstrate measurable business value or tangible milestone achievement at regular intervals (e.g., quarterly or per increment) to justify continued investment.", module: "Milestones", href: "#/milestones" },
+      { n: 7, title: "Post-Implementation Reviews (PIR)", rule: "A formal lessons-learned and benefits-realization assessment must be conducted and documented within 30 days of project closure.", module: "Projects", href: "#/projects" },
+    ],
+  },
+  {
+    key: "financials", label: "Financials & Budgeting", icon: Coins, accent: "text-amber-600 bg-amber-50 border-amber-100",
+    controls: [
+      { n: 8, title: "Strict Variance Thresholds", rule: "Any budget variance (Estimate at Completion vs. Budget at Completion) exceeding +/- 10% mandates an immediate root-cause analysis and an executive remediation plan.", module: "Financials", href: "#/financials" },
+      { n: 9, title: "Monthly Financial Reconciliation", rule: "Actual spend must be reconciled against the forecast by the 5th business day of each month to ensure accurate cash flow reporting and prevent end-of-quarter budget surprises.", module: "Financials", href: "#/financials" },
+      { n: 10, title: "CAPEX/OPEX Segregation", rule: "Project labor, software, and infrastructure costs must be strictly categorized and tracked as Capital Expenditure (CAPEX) or Operational Expenditure (OPEX) in adherence to corporate financial compliance.", module: "Financials", href: "#/financials" },
+      { n: 11, title: "Earned Value Tracking", rule: "For high-budget enterprise programs, Earned Value Management (EVM) metrics — specifically Cost Performance Index (CPI) and Schedule Performance Index (SPI) — must be used to objectively measure financial health.", module: "EVM", href: "#/evm" },
+    ],
+  },
+  {
+    key: "raid", label: "RAID Management (Risks, Assumptions, Issues, Dependencies)", icon: Radar, accent: "text-red-600 bg-red-50 border-red-100",
+    controls: [
+      { n: 12, title: "Quantified Risk Mitigation", rule: "Every risk rated as \"High\" impact or probability must have a documented mitigation strategy, a contingency budget/buffer, and a specifically named owner accountable for its resolution.", module: "Risks", href: "#/raid" },
+      { n: 13, title: "Time-Bound Issue Escalation", rule: "Issues threatening the critical path or remaining unresolved for more than 5 business days must trigger an automatic escalation to the project sponsor or steering committee.", module: "Issues", href: "#/raid" },
+      { n: 14, title: "Cross-Program Dependency Contracts", rule: "Inter-project dependencies must be formally mapped, agreed upon by both project managers, and reviewed weekly to prevent downstream delays from external bottlenecks.", module: "Dependencies", href: "#/raid" },
+      { n: 15, title: "Continuous Assumption Validation", rule: "Assumptions established during the initial business case must be logged and reviewed at every stage gate to explicitly convert them into accepted facts, identified risks, or resolved items.", module: "Assumptions", href: "#/raid" },
+    ],
+  },
+];
+
+const FRAMEWORK_TOTAL = FRAMEWORK.reduce((s, d) => s + d.controls.length, 0);
+
+function FrameworkSection() {
+  return (
+    <SectionCard
+      title="Governance framework"
+      description={`${FRAMEWORK_TOTAL} controls across ${FRAMEWORK.length} domains · each control maps to the module that operationalises it`}
+      actions={<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-normal">PMO baseline</Badge>}
+    >
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {FRAMEWORK.map((d) => {
+          const Icon = d.icon;
+          return (
+            <div key={d.key} className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 bg-slate-50">
+                <span className={cn("inline-flex h-7 w-7 items-center justify-center rounded-md border", d.accent)}>
+                  <Icon className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{d.label}</p>
+                  <p className="text-xs text-slate-400">{d.controls.length} control{d.controls.length === 1 ? "" : "s"}</p>
+                </div>
+              </div>
+              <ul className="divide-y divide-slate-100">
+                {d.controls.map((c) => (
+                  <li key={c.n} className="px-4 py-3">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-600 tabular-nums">
+                        {c.n}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-slate-800">{c.title}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-slate-500">{c.rule}</p>
+                        <a
+                          href={c.href}
+                          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                        >
+                          <GitBranch className="h-3 w-3" />
+                          Enforced in {c.module}
+                        </a>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </SectionCard>
+  );
+}
 
 function RuleDialog({ mode, target, options, onClose, onSaved }: {
   mode: "add" | "edit"; target: Rule | null; options: ProjectOption[];
@@ -173,6 +287,10 @@ export default function GovernanceView() {
   const refetchGov = () => { rules.refetch(); alerts.refetch(); };
   useRealtimeRefetch(refetchGov, ["governance:changed", "alert:created", "automation:executed"]);
 
+  // --- Field Dictionary: assignments + bulk values for rules and alerts ---
+  const ruleFields = useModuleFieldsHandle("governance_rule", (rules.data?.rules ?? []).map((r) => r.id));
+  const alertFields = useModuleFieldsHandle("governance_alert", (alerts.data?.alerts ?? []).map((a) => a.id));
+
   const [dialog, setDialog] = useState<{ mode: "add" | "edit"; target?: Rule } | null>(null);
   const [evaluating, setEvaluating] = useState(false);
 
@@ -230,6 +348,11 @@ export default function GovernanceView() {
     ) },
     { key: "executions", header: "Runs", render: (r) => <span className="tabular-nums text-slate-600">{r.executionCount}</span> },
     { key: "lastTriggered", header: "Last triggered", render: (r) => <span className="text-xs tabular-nums text-slate-500">{r.lastTriggeredAt ? fmtDateTime(r.lastTriggeredAt) : "never"}</span> },
+    // Field Dictionary: dynamic columns for any field flagged "in table"
+    ...customFieldColumns<Rule>(ruleFields.tableColumns, ruleFields.values),
+    { key: "cf", header: "", className: "w-10", render: (r) => (
+      <RecordFieldsButton moduleKey="governance_rule" recordId={r.id} label={r.name} onSaved={ruleFields.refetch} />
+    ) },
     { key: "actions", header: "", className: "w-20", render: (r) => (
       <div className="flex items-center gap-1">
         <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit ${r.name}`} onClick={() => setDialog({ mode: "edit", target: r })}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -255,6 +378,8 @@ export default function GovernanceView() {
         breadcrumb={["Home", "Control", "Governance"]}
         actions={
           <>
+            {ruleFields.actions}
+            {alertFields.actions}
             <Button size="sm" variant="outline" disabled={evaluating} onClick={() => void evaluate()}>
               <Play className="h-4 w-4 mr-1.5" />{evaluating ? "Evaluating…" : "Evaluate now"}
             </Button>
@@ -263,11 +388,15 @@ export default function GovernanceView() {
         }
       />
 
+      {/* GOVERNANCE FRAMEWORK */}
+      <FrameworkSection />
+
       {/* RULES */}
       <SectionCard title="Threshold rules" description={`${rules.data?.rules.length ?? 0} rules · engine runs on events and on demand`}>
         {rules.loading && !rules.data ? <LoadingBlock label="Loading rules…" /> :
           rules.error && !rules.data ? <ErrorBlock message={rules.error} onRetry={rules.refetch} /> : (
             <DataTable columns={ruleColumns} rows={rules.data?.rules ?? []} keyField="id"
+              onRowDoubleClick={(r) => setDialog({ mode: "edit", target: r })}
               emptyTitle="No rules defined" emptyDescription="Create the first threshold rule to start watching your portfolio."
               maxHeight="30rem" />
           )}
@@ -286,9 +415,14 @@ export default function GovernanceView() {
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 z-[1]">
                     <tr className="bg-slate-50 border-b border-slate-200">
-                      {["Severity", "Alert", "Metric vs threshold", "Project", "Status", "Created", "Actions"].map((h) => (
+                      {["Severity", "Alert", "Metric vs threshold", "Project", "Status", "Created"].map((h) => (
                         <th key={h} className="text-left font-medium text-slate-500 px-3 py-2.5 whitespace-nowrap text-xs uppercase tracking-wide">{h}</th>
                       ))}
+                      {/* Field Dictionary: dynamic columns for any field flagged "in table" */}
+                      {alertFields.tableColumns.map((a) => (
+                        <th key={a.id} className="text-left font-medium text-slate-500 px-3 py-2.5 whitespace-nowrap text-xs uppercase tracking-wide">{a.displayLabel || a.field.label}</th>
+                      ))}
+                      <th className="text-left font-medium text-slate-500 px-3 py-2.5 whitespace-nowrap text-xs uppercase tracking-wide">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -302,11 +436,18 @@ export default function GovernanceView() {
                         <td className="px-3 py-2.5 text-xs text-slate-600">{a.project?.code ?? "—"}</td>
                         <td className="px-3 py-2.5"><StatusChip status={a.status} /></td>
                         <td className="px-3 py-2.5 text-xs tabular-nums text-slate-400 whitespace-nowrap">{fmtDateTime(a.createdAt)}</td>
+                        {/* Field Dictionary: dynamic columns for any field flagged "in table" */}
+                        {alertFields.tableColumns.map((col) => (
+                          <td key={col.id} className="px-3 py-2.5">
+                            <CustomFieldValueCell assignment={col} value={alertFields.values[a.id]?.[col.field.fieldKey] ?? null} />
+                          </td>
+                        ))}
                         <td className="px-3 py-2.5">
                           <div className="flex items-center gap-1.5">
                             {a.status === "NEW" && <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => void alertAction(a, "ACKNOWLEDGED")}>Acknowledge</Button>}
                             {a.status !== "RESOLVED" && <Button variant="ghost" size="sm" className="h-7 text-xs text-emerald-600" onClick={() => void alertAction(a, "RESOLVED")}>Resolve</Button>}
                             {a.status === "RESOLVED" && <span className="text-xs text-slate-300">closed</span>}
+                            <RecordFieldsButton moduleKey="governance_alert" recordId={a.id} label={a.title} onSaved={alertFields.refetch} />
                           </div>
                         </td>
                       </tr>

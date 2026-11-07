@@ -23,6 +23,7 @@ export interface SessionUser {
   roles: string[];        // role codes
   permissions: string[];  // permission codes
   avatarColor: string;
+  avatarUrl: string | null;
   title: string | null;
 }
 
@@ -60,10 +61,8 @@ export function extractToken(req: Request): string | null {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
-/** Resolve the authenticated user + RBAC grants from a request. Returns null when unauthenticated. */
-export async function getSessionUser(req: Request): Promise<SessionUser | null> {
-  const token = extractToken(req);
-  if (!token) return null;
+/** Resolve the authenticated user + RBAC grants from a raw token (shared core). */
+async function resolveSession(token: string): Promise<SessionUser | null> {
   const payload = await verifyToken(token);
   if (!payload) return null;
   const user = await db.user.findUnique({
@@ -80,6 +79,30 @@ export async function getSessionUser(req: Request): Promise<SessionUser | null> 
   return {
     id: user.id, email: user.email, name: user.name,
     isSuperAdmin: user.isSuperAdmin, roles, permissions: [...permissions],
-    avatarColor: user.avatarColor, title: user.title,
+    avatarColor: user.avatarColor, avatarUrl: user.avatarUrl, title: user.title,
   };
+}
+
+/** Resolve the authenticated user + RBAC grants from a request. Returns null when unauthenticated. */
+export async function getSessionUser(req: Request): Promise<SessionUser | null> {
+  const token = extractToken(req);
+  if (!token) return null;
+  return resolveSession(token);
+}
+
+/**
+ * Resolve the session from the auth cookie — for Server Actions, which have no
+ * Request to read headers from. Uses `next/headers` lazily so this module stays
+ * import-safe for scripts and route handlers.
+ */
+export async function getSessionUserFromCookie(): Promise<SessionUser | null> {
+  try {
+    const { cookies } = await import("next/headers");
+    const store = await cookies();
+    const token = store.get(AUTH_COOKIE)?.value;
+    if (!token) return null;
+    return await resolveSession(decodeURIComponent(token));
+  } catch {
+    return null;
+  }
 }

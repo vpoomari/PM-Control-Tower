@@ -88,6 +88,7 @@ export const POST = withApi(async (ctx) => {
     after: requirement, ipAddress: ctx.ip, context: `Project ${id}`,
   });
   emitRealtime("project:updated", { entity: "requirement", action: "created", projectId: id, requirementId: requirement.id }, projectRoom(id));
+  emitRealtime("requirement:changed", { projectId: id, action: "created", requirementId: requirement.id }, projectRoom(id)); // views subscribe to this name
 
   return ok(requirement, 201);
 }, { permission: "project.manage", rateLimit: { limit: 120, windowMs: 60_000 } });

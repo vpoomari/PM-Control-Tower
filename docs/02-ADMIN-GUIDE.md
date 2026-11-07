@@ -118,7 +118,29 @@ the API.
 
 ---
 
-## 7. Administrative CLI reference
+## 7. Settings — tab visibility
+
+**Admin → Settings → Tab Visibility** (added 2026-10-31, PMO/Admin only —
+guarded by `admin.config`).
+
+- Lists all **50 navigation tabs** of the platform (grouped by sidebar
+  section). Tick = shown, untick = hidden — the change applies immediately to
+  every user's sidebar **and** to sub-tab strips; the settings hub itself can
+  be hidden too (re-open it with the direct URL `#/admin/settings`, deep links
+  keep working).
+- Purely **display-only**: hidden tabs break no linkage, no permission and no
+  API — records, exports, cross-references and audit trails are untouched, and
+  the data model has no notion of "hidden".
+- Stored as `AdminSettings.hiddenNavTabsJson` (`[]` = everything visible),
+  served by `GET/PATCH /api/admin/nav-visibility`, broadcast to open sessions
+  over the realtime `admin:changed` event, and every change is audited as
+  `AdminConfig:NavVisibility` (before/after tab lists).
+- Reset: tick everything (or `PATCH` `hidden: []`) to restore the default
+  full navigation.
+
+---
+
+## 8. Administrative CLI reference
 
 Run from the project root (inside Docker: prefix with `docker compose exec app`).
 

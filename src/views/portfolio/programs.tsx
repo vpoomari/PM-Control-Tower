@@ -16,6 +16,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { money, num, fmtDate } from "@/lib/constants";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import { customFieldColumns } from "@/components/fields/custom-columns";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
 import { Plus, Pencil, Wallet, FolderKanban, TrendingUp } from "lucide-react";
 
 interface PortfolioRef { id: string; code: string; name: string }
@@ -34,7 +37,7 @@ interface Program {
   projectCount: number; ragDistribution: { GREEN: number; AMBER: number; RED: number };
   projects: ProgramProject[];
 }
-interface ProgramRow extends Program { portfolioName: string }
+interface ProgramRow extends Program { [key: string]: unknown; portfolioName: string }
 
 interface FormState {
   id?: string; code: string; name: string; description: string; portfolioId: string;
@@ -79,6 +82,9 @@ export default function ProgramsView() {
     });
     setDialogOpen(true);
   };
+
+  // --- Field Dictionary: assignments + bulk values for the programs ---
+  const fields = useModuleFieldsHandle("program", (programs.data ?? []).map((p) => p.id));
 
   const save = async () => {
     if (form.code.trim().length < 2) { toast.error("Code must be at least 2 characters"); return; }
@@ -128,6 +134,11 @@ export default function ProgramsView() {
     { key: "projectCount", header: "Projects", className: "text-right", render: (r) => <span className="tabular-nums">{r.projectCount}</span> },
     { key: "budget", header: "Budget", className: "text-right", render: (r) => <span className="tabular-nums">{money(r.budget)}</span> },
     { key: "committed", header: "Committed", className: "text-right", render: (r) => <span className="tabular-nums text-xs">{money(r.totals.currentBudget)}</span> },
+    // Field Dictionary: dynamic columns for any field flagged "in table"
+    ...customFieldColumns<ProgramRow>(fields.tableColumns, fields.values),
+    { key: "cf", header: "", className: "w-10", render: (r) => (
+      <RecordFieldsButton moduleKey="program" recordId={r.id} label={r.code} onSaved={fields.refetch} />
+    ) },
   ];
 
   if (programs.loading) return <LoadingBlock label="Loading programs…" />;
@@ -144,7 +155,12 @@ export default function ProgramsView() {
         title="Programs"
         subtitle="Coordinated groups of related projects delivering a shared outcome inside a portfolio."
         breadcrumb={["Home", "Programs"]}
-        actions={<Button onClick={openCreate} disabled={!portfolios.data?.length}><Plus className="h-4 w-4 mr-1.5" /> New program</Button>}
+        actions={
+          <>
+            {fields.actions}
+            <Button onClick={openCreate} disabled={!portfolios.data?.length}><Plus className="h-4 w-4 mr-1.5" /> New program</Button>
+          </>
+        }
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -175,6 +191,7 @@ export default function ProgramsView() {
         rows={rows}
         keyField="id"
         onRowClick={(r) => setDetail(r)}
+        onRowDoubleClick={(r) => openEdit(r)}
         emptyTitle="No programs match"
         emptyDescription="Adjust filters or create a program."
       />

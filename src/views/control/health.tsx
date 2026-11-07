@@ -10,6 +10,9 @@ import {
 } from "@/components/pmct/kit";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { ResponsiveContainer, RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import { customFieldColumns } from "@/components/fields/custom-columns";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
 import { HeartPulse, RefreshCcw, ShieldAlert, Bug } from "lucide-react";
 
 interface HealthProject {
@@ -17,6 +20,7 @@ interface HealthProject {
   healthScore: number; ragStatus: string; progress: number;
 }
 interface Snapshot {
+  [key: string]: unknown;
   id: string; projectId: string; capturedAt: string; healthScore: number; ragStatus: string;
   cpi: number; spi: number; costVariance: number; scheduleVariance: number; eac: number; bac: number;
   openRisks: number; openIssues: number; overdueMilestones: number; resourceUtilization: number;
@@ -33,6 +37,12 @@ export default function HealthView() {
 
   const [openId, setOpenId] = useState<string | null>(null);
   const detail = useApi<HealthProjectData>(openId ? `/api/health?projectId=${openId}` : null);
+  // --- Field Dictionary: assignments + bulk values for the loaded snapshots ---
+  const fields = useModuleFieldsHandle("health_snapshot", (detail.data?.snapshots ?? []).map((s) => s.id));
+  const snapshotCols = useMemo(
+    () => customFieldColumns<Snapshot>(fields.tableColumns, fields.values),
+    [fields.tableColumns, fields.values],
+  );
   const [recalcing, setRecalcing] = useState(false);
 
   const latestByProject = useMemo(() => {
@@ -73,6 +83,7 @@ export default function HealthView() {
         title="Portfolio Health"
         subtitle="Composite project health from cost, schedule, risk, governance and capacity factors."
         breadcrumb={["Home", "Control", "Health"]}
+        actions={fields.actions}
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -170,6 +181,11 @@ export default function HealthView() {
                         {["Captured", "Score", "RAG", "CPI", "SPI", "EAC", "Risks", "Issues", "Trigger"].map((h) => (
                           <th key={h} className="text-left font-medium text-slate-500 px-3 py-2.5 whitespace-nowrap text-xs uppercase tracking-wide">{h}</th>
                         ))}
+                        {/* Field Dictionary: dynamic columns for any field flagged "in table" */}
+                        {snapshotCols.map((c) => (
+                          <th key={c.key} className="text-left font-medium text-slate-500 px-3 py-2.5 whitespace-nowrap text-xs uppercase tracking-wide">{c.header}</th>
+                        ))}
+                        <th className="px-3 py-2.5 w-10" />
                       </tr>
                     </thead>
                     <tbody>
@@ -184,6 +200,12 @@ export default function HealthView() {
                           <td className="px-3 py-2.5 tabular-nums text-slate-600">{s.openRisks}</td>
                           <td className="px-3 py-2.5 tabular-nums text-slate-600">{s.openIssues}</td>
                           <td className="px-3 py-2.5 text-xs text-slate-400">{s.triggeredBy.replace(/_/g, " ").toLowerCase()}</td>
+                          {snapshotCols.map((c) => (
+                            <td key={c.key} className="px-3 py-2.5">{c.render?.(s)}</td>
+                          ))}
+                          <td className="px-3 py-2.5">
+                            <RecordFieldsButton moduleKey="health_snapshot" recordId={s.id} label={fmtDateTime(s.capturedAt)} onSaved={fields.refetch} />
+                          </td>
                         </tr>
                       ))}
                     </tbody>

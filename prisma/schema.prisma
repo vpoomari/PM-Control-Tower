@@ -23,6 +23,7 @@ model User {
   department    String?
   phone         String?
   avatarColor   String    @default("#1e3a5f")
+  avatarUrl     String?
   isActive      Boolean   @default(true)
   mfaEnabled  Boolean @default(false)
   mfaSecret   String?
@@ -182,6 +183,7 @@ model Project {
   dependencies     Dependency[]
   milestones       Milestone[]
   baselines        Baseline[]
+  calendar         ProjectCalendar?
   assignments      Assignment[]
   timesheetEntries TimesheetEntry[]
   budgetLines      BudgetLine[]
@@ -205,6 +207,8 @@ model Project {
   aiActions        AiAction[]
   benefitProfiles  BenefitProfile[]
   customFieldsJson String?
+  // Dynamic Field Configuration Engine — admin-defined field values keyed by fieldKey
+  customData       Json? // keyed by fieldKey; app uses `?? {}` (SQLite rejects Json defaults)
   strategicObjectiveId String?
   strategicObjective StrategicObjective? @relation(fields: [strategicObjectiveId], references: [id], onDelete: SetNull)
   projectScore     ProjectScore?
@@ -338,6 +342,13 @@ model Task {
   plannedCost    Float     @default(0)
   actualCost     Float     @default(0)
   assigneeId     String?
+  // --- Automated e-mail engine (prioritized dashboard) -----------------
+  // dueTodayEmailedAt: last time the "Due Today" trigger fired for this task
+  //                    (one single e-mail per reached due date — idempotent per day).
+  // overdueEmailedAt : last time the daily overdue escalation fired; refreshed
+  //                    every day until status hits COMPLETED / CANCELLED / ON_HOLD.
+  dueTodayEmailedAt DateTime?
+  overdueEmailedAt  DateTime?
   isCritical     Boolean   @default(false)
   isSummary      Boolean   @default(false)
   earliestStart  DateTime?
@@ -369,6 +380,8 @@ model Task {
   sprintId    String?
   storyPoints Float    @default(0)
   backlogOrder Int     @default(0)
+  constraintDate DateTime?
+  deadline      DateTime?
 
   @@index([projectId])
   @@index([wbsId])
@@ -436,6 +449,23 @@ model Baseline {
   @@index([projectId])
 }
 
+// PM CONTROL TOWER — Working-time calendar per project (controls scheduling math).
+// workingDays: JSON array of ISO day numbers Mon=1..Sun=7 that count as working days.
+// hoursPerDay: contracted working hours in an ordinary working day.
+// holidays:    JSON array of ISO dates ("2026-12-25") that are non-working exceptions.
+model ProjectCalendar {
+  id           String  @id @default(cuid())
+  projectId    String  @unique
+  workingDays  String  @default("[1,2,3,4,5]")
+  hoursPerDay  Float   @default(8)
+  holidays     String  @default("[]")
+  calendarName String  @default("Standard")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
 // ============ EXECUTE: RESOURCES, TIMESHEETS ============
 
 model Resource {
@@ -457,6 +487,7 @@ model Resource {
   availabilityStatus   String    @default("AVAILABLE")
   location             String?
   managerName          String?
+  avatarUrl            String?   // bundled /avatars/avatar-NN.png (whitelist), null = linked-user avatar / generated fallback
   isActive             Boolean   @default(true)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
@@ -1515,6 +1546,91 @@ model WebhookDelivery {
   @@index([subscriptionId, createdAt])
 }
 
+// ============ TOWERINTEGRATION HUB ============
+
+// One row per activated tool of the 55-tool ecosystem. Extends the existing
+// Integration/Webhook linkage (integrationId links back when a matching
+// Integration exists — nothing is de-linked).
+
+model HubConnection {
+  id              String    @id @default(cuid())
+  toolId          String    @unique          // registry id, e.g. "jira"
+  name            String
+  category        String                      // HubCategory (6 routing categories)
+  status          String    @default("PAUSED") // PAUSED | ACTIVE | DEGRADED | ERROR
+  authKind        String    @default("HMAC")  // HMAC | JWT | OAUTH2 | MTLS | NONE
+  authStatus      String    @default("NOT_CONFIGURED") // NOT_CONFIGURED | VALID | INVALID
+  ingressMode     String    @default("WEBHOOK") // WEBHOOK | POLL | BI_REFRESH | CSV_UPLOAD
+  secretRef       String?                    // vault:// reference to HMAC/JWT secret
+  secretEnc       String?                    // AES-256-GCM encrypted secret (same vault scheme as AI BYOK)
+  configJson      String?                    // base URL, poll cadence, mtls policy…
+  // Circuit breaker state (serialized BreakerSnapshot from lib/hub/breaker.ts)
+  breakerState    String    @default("CLOSED") // CLOSED | OPEN | HALF_OPEN
+  breakerJson     String?                    // full snapshot: failures, retryAtMs, trips…
+  // Counters
+  ingestedCount   Int       @default(0)
+  harmonizedCount Int       @default(0)
+  dlqCount        Int       @default(0)
+  lastIngestAt    DateTime?
+  lastError       String?
+  // Existing-linkage pointer (e.g. seeded "Jira Software" Integration row)
+  integrationId   String?
+  createdBy       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  events  HubEvent[]
+  dlq     HubDeadLetter[]
+
+  @@index([category, status])
+}
+
+// One row per payload processed through the pipeline (append-only ledger).
+model HubEvent {
+  id             String   @id @default(cuid())
+  connectionId   String
+  toolId         String
+  mode           String                      // WEBHOOK | POLL | BI_REFRESH | CSV_UPLOAD
+  outcome        String                      // HARMONIZED | PARTIAL | DLQ | REJECTED
+  queue          String?                    // processing queue id
+  lane           Int      @default(2)
+  extracted      Int      @default(0)
+  harmonized     Int      @default(0)
+  dlqEntries     Int      @default(0)
+  durationMs     Int      @default(0)
+  reason         String?
+  payloadPreview String?                    // truncated raw payload for the feed
+  createdAt      DateTime @default(now())
+
+  connection HubConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId, createdAt])
+  @@index([outcome, createdAt])
+}
+
+// Dead Letter Queue — anomalies, missing requireds, validation errors.
+// Nothing is dropped: every blocked payload lands here for monitoring + replay.
+model HubDeadLetter {
+  id             String    @id @default(cuid())
+  connectionId   String
+  toolId         String
+  queue          String?
+  severity       String    @default("BLOCKING") // BLOCKING | WARN
+  reason         String
+  anomalies      String                       // JSON array of anomaly codes
+  payloadPreview String?                      // truncated raw record/payload
+  itemJson       String?                      // partial UWM item when WARN
+  status         String    @default("PENDING") // PENDING | REPLAYED | DISMISSED
+  replayCount    Int       @default(0)
+  resolvedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  connection HubConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId, status])
+  @@index([severity, createdAt])
+}
+
 // ============ AI CONNECTOR GATEWAY ============
 
 model AIConnector {
@@ -1530,6 +1646,10 @@ model AIConnector {
   configJson  String?
   usageCount  Int       @default(0)
   lastUsedAt  DateTime?
+  // Token meter (AI provider panel): allowance captured "at start" of the
+  // current period; consumed tokens are summed live from the AIExecution ledger.
+  tokenBudget      Int      @default(0) // 0 = allowance not set yet
+  usagePeriodStart DateTime? // key save / manual reset — metering window start
   createdAt   DateTime  @default(now())
 }
 
@@ -2156,6 +2276,189 @@ model FieldDefinition {
   @@index([entityKey, status])
 }
 
+// --- Dynamic Field Configuration Engine (v3.2) ---
+// Admin-defined field dictionary + UI tab mappings. Values are stored on
+// Project.customData (Json column keyed by fieldKey). On SQLite Prisma stores
+// Json as TEXT; on PostgreSQL the same schema maps to JSONB with no changes.
+// dataType uses a String column + app-level enum (FIELD_DATA_TYPES in
+// src/lib/engines/custom-fields.ts) because SQLite does not support Prisma
+// enums — swap to `enum FieldDataType` verbatim when migrating to PostgreSQL.
+model CustomFieldDefinition {
+  id          String            @id @default(uuid())
+  fieldKey    String            @unique // stable, immutable machine name: business_owner
+  name        String            @default("") // friendly field name (defaults to label)
+  label       String // display label: Business Owner
+  dataType    String            // TEXT | LONG_TEXT | INTEGER | DECIMAL | CURRENCY | PERCENTAGE | DATE | DATETIME | CHECKBOX | SINGLE_SELECT | MULTI_SELECT | USER_LOOKUP | ENTITY_LOOKUP | URL | EMAIL | FORMULA | PHONE
+  options     Json? // DROPDOWN / MULTI_SELECT: string[] of choices. ENTITY_LOOKUP: { entity: "project" }
+  config      Json? // validation + display rules: { min, max, step, integer, unit, minLength, maxLength, multiline, placeholder, defaultValue, expression }
+  description String?
+  // --- Dictionary governance (v4.0 Field Dictionary) ---
+  categoryId    String?
+  category      FieldCategory?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  fieldGroup    String? // optional grouping label inside forms/tables
+  status        String                  @default("ACTIVE") // ACTIVE | INACTIVE | DEPRECATED | ARCHIVED
+  isRequired    Boolean                 @default(false) // global default; assignments may override
+  isReadOnly    Boolean                 @default(false) // global default; assignments may override
+  isSearchable  Boolean                 @default(true)
+  isFilterable  Boolean                 @default(true)
+  isSortable    Boolean                 @default(true)
+  isReportable  Boolean                 @default(true)
+  isExportable  Boolean                 @default(true)
+  sensitivity   String                  @default("INTERNAL") // PUBLIC | INTERNAL | CONFIDENTIAL | RESTRICTED
+  visibleRolesJson String? // csv of role codes allowed to VIEW the field value (empty = all)
+  editableRolesJson String? // csv of role codes allowed to EDIT the field value (empty = all)
+  deprecationReason String?
+  version       Int                     @default(1)
+  createdById   String?
+  createdByName String?
+  updatedById   String?
+  updatedByName String?
+  isActive      Boolean                 @default(true) // legacy mirror of status === "ACTIVE"
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  tabMappings  TabFieldMapping[]
+  assignments  ModuleFieldAssignment[]
+  values       CustomFieldValue[]
+  auditLogs    FieldAuditLog[]
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([dataType])
+}
+
+// ============ FIELD DICTIONARY & DYNAMIC FIELD CONFIGURATION (v4.0) ============
+// Define once → reuse across modules → configure per module → store values
+// against the correct business record.
+//
+//   CustomFieldDefinition  (A) GLOBAL FIELD DEFINITION — the reusable dictionary entry
+//   ModuleFieldAssignment  (B) MODULE FIELD ASSIGNMENT — how a definition is used in ONE module
+//   CustomFieldValue       (C) FIELD VALUE          — typed value against ONE business record
+//   FieldAuditLog          — lifecycle + assignment + value-change audit trail
+//
+// Values are stored in typed columns (valueText/valueNumber/valueDate/valueBool/
+// valueJson) so numeric, date, currency and relationship fields stay valid for
+// filtering, sorting, reporting and export. SQLite has no Prisma enums, so all
+// enum-ish columns are Strings validated app-side (src/lib/engines/field-dictionary.ts).
+
+model FieldCategory {
+  id          String   @id @default(cuid())
+  key         String   @unique // snake_case: commercial, delivery, compliance
+  name        String
+  description String?
+  color       String? // tailwind-oriented accent token, display only
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  fields      CustomFieldDefinition[]
+  assignments ModuleFieldAssignment[]
+
+  @@index([isActive, sortOrder])
+}
+
+model ModuleFieldAssignment {
+  id                String                @id @default(uuid())
+  fieldDefinitionId String
+  fieldDefinition   CustomFieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+  moduleKey         String // portfolio | program | project | requirement | wbs_node | task | milestone | baseline | resource | timesheet | timesheet_entry | budget_line | evm_period | health_snapshot | risk | issue | assumption | change_request | stage_gate | governance_rule | governance_alert | user | audit_trail
+  categoryId        String?
+  category          FieldCategory?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  section           String                @default("general") // form section/grouping key
+  sortOrder         Int                   @default(100)
+  displayLabel      String? // per-module label override (never mutates the global definition)
+  isRequired        Boolean               @default(false) // module-level override of the global default
+  isReadOnly        Boolean               @default(false)
+  isVisible         Boolean               @default(true)
+  isInForm          Boolean               @default(true)
+  isInTable         Boolean               @default(false)
+  isInDetail        Boolean               @default(true)
+  isFilterable      Boolean               @default(true)
+  isSortable        Boolean               @default(true)
+  validationOverridesJson String? // { min, max, minLength, maxLength, required } overrides
+  createdById       String?
+  createdByName     String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  values            CustomFieldValue[]
+
+  @@unique([fieldDefinitionId, moduleKey]) // a field can never be assigned to the same module twice
+  @@index([moduleKey, sortOrder])
+}
+
+model CustomFieldValue {
+  id                String                @id @default(uuid())
+  fieldDefinitionId String
+  fieldDefinition   CustomFieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+  assignmentId      String?
+  assignment        ModuleFieldAssignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  moduleKey         String
+  recordId          String // id of the owning business record
+  projectId         String? // optional project scope (for project-scoped modules)
+  // ---- typed value columns (exactly one is populated) ----
+  valueText         String? // TEXT | LONG_TEXT | EMAIL | URL | PHONE | SINGLE_SELECT | USER_LOOKUP | ENTITY_LOOKUP | DATE(yyyy-mm-dd) | DECIMAL/CURRENCY/PERCENTAGE/INTEGER(formatted)
+  valueNumber       Float? // INTEGER | DECIMAL | CURRENCY | PERCENTAGE | FORMULA(numeric)
+  valueDate         DateTime? // DATE | DATETIME
+  valueBool         Boolean? // CHECKBOX
+  valueJson         Json? // MULTI_SELECT: string[] | other structured payloads
+  formulaResultJson Json? // FORMULA: { value, error, inputs }
+  createdById       String?
+  updatedById       String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@unique([fieldDefinitionId, moduleKey, recordId]) // one value per field per record
+  @@index([moduleKey, recordId])
+  @@index([moduleKey, updatedAt])
+  @@index([fieldDefinitionId])
+  @@index([projectId])
+}
+
+model FieldAuditLog {
+  id                String                @id @default(uuid())
+  fieldDefinitionId String?
+  fieldDefinition   CustomFieldDefinition? @relation(fields: [fieldDefinitionId], references: [id], onDelete: SetNull)
+  assignmentId      String?
+  moduleKey         String?
+  recordId          String?
+  action            String // CREATE | UPDATE | DEPRECATE | ACTIVATE | ARCHIVE | DELETE | ASSIGN | UNASSIGN | ASSIGNMENT_UPDATE | VALUE_SET | VALUE_CLEAR | MIGRATE
+  summary           String
+  beforeJson        String?
+  afterJson         String?
+  userId            String?
+  userName          String?
+  role              String?
+  ipAddress         String?
+  createdAt         DateTime              @default(now())
+
+  @@index([fieldDefinitionId, createdAt])
+  @@index([moduleKey, recordId])
+  @@index([createdAt])
+}
+
+model ProjectTab {
+  id          String  @id @default(uuid())
+  name        String
+  order       Int
+  description String? // helper text shown above the form on the project workspace
+  fields      TabFieldMapping[]
+}
+
+model TabFieldMapping {
+  id           String                @id @default(uuid())
+  tabId        String
+  tab          ProjectTab            @relation(fields: [tabId], references: [id], onDelete: Cascade)
+  fieldId      String
+  field        CustomFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  displayOrder Int
+  isRequired   Boolean               @default(false)
+  isReadOnly   Boolean               @default(false) // locked on this tab (value tracked, not edited here)
+  fullWidth    Boolean               @default(false) // spans both form columns
+  showInReport Boolean               @default(true) // included in field reporting / coverage
+
+  @@unique([tabId, fieldId])
+  @@index([tabId, displayOrder])
+}
+
 model NamingConvention {
   id        String @id @default(cuid())
   scope     String @unique // fields | entities | projectCode | riskCode | issueCode | changeCode
@@ -2189,6 +2492,7 @@ model AdminSettings {
   currency             String @default("USD")
   dateFormat           String @default("YYYY-MM-DD")
   prioritizationConfigJson String @default("{}") // executive prioritization: RAG thresholds, alerts, decision categories, presets, KPI defs
+  hiddenNavTabsJson    String @default("[]") // admin-configured sidebar visibility: hrefs of nav tabs hidden from ALL users (display-only — routes stay reachable)
 }
 
 // ============ IDENTITY & ACCESS (v2.0.0) ============
@@ -2299,4 +2603,48 @@ model CustomReport {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   @@index([createdBy])
+}
+
+// ============ AI AGENTS (autonomous workers, activated in Admin → Settings) ============
+// AgentProfile holds ONLY per-organisation activation + config; the agent
+// definitions themselves are code (src/lib/agents/catalog.ts) — single source
+// of truth. Rows are upserted lazily from the catalogue on first read.
+
+model AgentProfile {
+  id           String    @id @default(cuid())
+  key          String    @unique
+  status       String    @default("PAUSED") // ACTIVE | PAUSED
+  configJson   String    @default("{}")     // cadence + per-agent thresholds (org-tuned)
+  budgetTokens Int       @default(0)        // 0 = unlimited (global token meter still applies)
+  runCount     Int       @default(0)
+  lastRunAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// Append-only ledger of every agent run: findings, proposed action, approval
+// state and outcome. The audit trail for "what did the agent do, and who let it".
+
+model AgentRun {
+  id             String    @id @default(cuid())
+  agentKey       String
+  trigger        String    @default("MANUAL")  // MANUAL | SCHEDULED
+  status         String    @default("SUCCESS") // SUCCESS | NO_FINDINGS | FAILED | PENDING_APPROVAL | APPLIED | REJECTED
+  summary        String?
+  findingsJson   String    @default("[]")
+  actionType     String?                      // proposed action (approval-gated agents)
+  actionJson     String?                      // validated payload for the apply step
+  narrationSource String   @default("HEURISTIC") // AI | HEURISTIC (honest fallback labelling)
+  tokens         Int       @default(0)
+  durationMs     Int       @default(0)
+  actorUserId    String?
+  actorName      String?
+  errorMessage   String?
+  approvedBy     String?
+  approvedAt     DateTime?
+  rejectedReason String?
+  createdAt      DateTime  @default(now())
+
+  @@index([agentKey, createdAt])
+  @@index([status])
 }

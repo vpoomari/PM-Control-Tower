@@ -1,6 +1,8 @@
 "use client";
 // PM CONTROL TOWER — Workspace Overview tab: charter, objectives, EVM snapshot, health, open items
 
+import type { ReactNode } from "react";
+import { useApi } from "@/lib/client";
 import type { ProjectDetailBundle } from "./types";
 import { SectionCard, StatCard, StatusChip, RagBadge, ProgressBar, EmptyState } from "@/components/pmct/kit";
 import { money, num, fmtDate, pct } from "@/lib/constants";
@@ -11,6 +13,8 @@ export default function OverviewTab({ bundle }: { bundle: ProjectDetailBundle })
   const evm = bundle.latestEvmPeriod;
   const health = bundle.healthSnapshots?.[bundle.healthSnapshots.length - 1];
   const counts = bundle.counts;
+  const users = useApi<{ users: { id: string; name: string }[] }>("/api/admin/users");
+  const userName = (id: string | null) => (id ? (users.data?.users.find((u) => u.id === id)?.name ?? "…") : "—");
 
   return (
     <div className="space-y-4">
@@ -76,6 +80,42 @@ export default function OverviewTab({ bundle }: { bundle: ProjectDetailBundle })
           </SectionCard>
         </div>
       </div>
+
+      {/* Project details — the same field set as the New/Edit project dialogs */}
+      <SectionCard title="Project details"
+        description="Identical field set to the create and edit forms — use Edit project in the header to change any value."
+        bodyClass="p-4 pt-2">
+        <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3">
+          {([
+            ["Code", <span className="font-mono text-xs">{p.code}</span>],
+            ["Status", <StatusChip status={p.status} />],
+            ["Priority", <StatusChip status={p.priority} />],
+            ["Phase", <StatusChip status={p.phase} />],
+            ["Methodology", p.methodology],
+            ["Risk level", <StatusChip status={p.riskLevel} />],
+            ["Billing type", (p.billingType || "").replace("_", " ") || "—"],
+            ["Currency", p.currency || "—"],
+            ["Program", bundle.program ? `${bundle.program.code} — ${bundle.program.name}` : "—"],
+            ["Portfolio", bundle.portfolio ? `${bundle.portfolio.code} — ${bundle.portfolio.name}` : "—"],
+            ["Project manager", bundle.owner?.name || "—"],
+            ["Manager", userName(p.managerId)],
+            ["Sponsor", userName(p.sponsorId)],
+            ["Start", fmtDate(p.startDate)],
+            ["Finish", fmtDate(p.endDate)],
+            ["Baseline start", fmtDate(p.baselineStart)],
+            ["Baseline finish", fmtDate(p.baselineFinish)],
+            ["Status date", fmtDate(p.statusDate)],
+            ["Current budget", money(p.currentBudget)],
+            ["Baseline budget", money(p.baselineBudget)],
+            ["Forecast cost", money(p.forecastCost)],
+          ] as [string, ReactNode][]).map(([k, v]) => (
+            <div key={k} className="min-w-0">
+              <dt className="text-[11px] uppercase tracking-wide text-slate-400">{k}</dt>
+              <dd className="text-sm font-medium text-slate-800 truncate">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      </SectionCard>
 
       {/* Open items summary */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

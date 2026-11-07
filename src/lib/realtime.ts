@@ -12,9 +12,18 @@ export type RealtimeEvent =
   | "actuals:changed" | "evm:changed" | "raid:changed" | "change:changed"
   | "governance:changed" | "alert:created" | "inbox:changed" | "planner:changed"
   | "integration:changed" | "automation:executed" | "notification:created" | "audit:created"
+  // TowerIntegration Hub: connection/auth/DLQ changes (additive — existing
+  // subscribers ignore unknown events, nothing de-linked):
+  | "hub:changed"
   | "data:imported" | "report:generated"
   | "freshness:changed" | "simulation:completed" | "scenario:merged" | "benefits:updated" | "ai:action"
-  | "agile:changed" | "field:changed";
+  | "agile:changed" | "field:changed" | "calendar:changed" | "tools:changed"
+  // Emitted so view subscriptions (MilestonesPanel, GatesTab, requirements views, EvmTab) match:
+  | "milestone:changed" | "gate:changed" | "requirement:changed" | "timesheet:changed"
+  // Admin configuration changes (tab visibility etc.) — shell + settings screens refetch:
+  | "admin:changed"
+  // AI agent runtime (Settings → AI Agents, AI Hub roster) — run/decision updates:
+  | "agent:run";
 
 export function emitRealtime(event: RealtimeEvent, payload: unknown, room?: string): void {
   const body = JSON.stringify({ event, payload, room });

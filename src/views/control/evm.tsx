@@ -10,6 +10,9 @@ import {
 } from "@/components/pmct/kit";
 import { ProjectPicker, useControlProjectId, useControlProjectOptions } from "@/views/control/shared/pickers";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid, Legend, ReferenceLine } from "recharts";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import { customFieldColumns } from "@/components/fields/custom-columns";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
 import { Camera, Info, FileText, Gauge } from "lucide-react";
 import { Input } from "@/components/pmct/kit";
 import { Label } from "@/components/ui/label";
@@ -20,6 +23,7 @@ interface EvmBlock {
   costVariance: number; scheduleVariance: number; percentComplete: number;
 }
 interface EvmSnapshot extends EvmBlock {
+  [key: string]: unknown;
   id: string; statusDate: string; periodStart: string | null; periodEnd: string | null; source: string;
 }
 interface EvmData { evm: EvmBlock; current: EvmBlock; latestSnapshot: EvmSnapshot | null; history: EvmSnapshot[] }
@@ -36,6 +40,12 @@ export default function EvmView() {
 
   const evm = useApi<EvmData>(projectId ? `/api/evm?projectId=${projectId}` : null);
   useRealtimeRefetch(evm.refetch, ["evm:changed", "actuals:changed"]);
+  // --- Field Dictionary: assignments + bulk values for the loaded EVM periods ---
+  const fields = useModuleFieldsHandle("evm_period", (evm.data?.history ?? []).map((h) => h.id));
+  const historyCols = useMemo(
+    () => customFieldColumns<EvmSnapshot>(fields.tableColumns, fields.values),
+    [fields.tableColumns, fields.values],
+  );
   const [snapshotting, setSnapshotting] = useState(false);
   const [tab, setTab] = useState<"cockpit" | "form" | "about">("cockpit");
 
@@ -73,6 +83,7 @@ export default function EvmView() {
         breadcrumb={["Home", "Control", "EVM"]}
         actions={
           <>
+            {fields.actions}
             <ProjectPicker value={projectId} onChange={setProjectId} options={options} />
             <Button size="sm" variant="outline" disabled={!projectId || snapshotting || optionsLoading} onClick={() => void createSnapshot()}>
               <Camera className="h-4 w-4 mr-1.5" />Create snapshot
@@ -181,6 +192,11 @@ export default function EvmView() {
                       {["Status date", "PV", "EV", "AC", "CPI", "SPI", "EAC", "VAC", "Source"].map((h) => (
                         <th key={h} className="text-left font-medium text-slate-500 px-3 py-2.5 whitespace-nowrap text-xs uppercase tracking-wide">{h}</th>
                       ))}
+                      {/* Field Dictionary: dynamic columns for any field flagged "in table" */}
+                      {historyCols.map((c) => (
+                        <th key={c.key} className="text-left font-medium text-slate-500 px-3 py-2.5 whitespace-nowrap text-xs uppercase tracking-wide">{c.header}</th>
+                      ))}
+                      <th className="px-3 py-2.5 w-10" />
                     </tr>
                   </thead>
                   <tbody>
@@ -195,6 +211,12 @@ export default function EvmView() {
                         <td className="px-3 py-2.5 tabular-nums text-slate-700">{money(h.eac)}</td>
                         <td className={`px-3 py-2.5 tabular-nums ${h.vac >= 0 ? "text-emerald-600" : "text-red-600"}`}>{money(h.vac)}</td>
                         <td className="px-3 py-2.5 text-xs text-slate-400">{h.source.replace(/_/g, " ").toLowerCase()}</td>
+                        {historyCols.map((c) => (
+                          <td key={c.key} className="px-3 py-2.5">{c.render?.(h)}</td>
+                        ))}
+                        <td className="px-3 py-2.5">
+                          <RecordFieldsButton moduleKey="evm_period" recordId={h.id} label={fmtDate(h.statusDate)} onSaved={fields.refetch} />
+                        </td>
                       </tr>
                     ))}
                   </tbody>

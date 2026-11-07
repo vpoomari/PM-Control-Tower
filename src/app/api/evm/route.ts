@@ -92,8 +92,13 @@ export const POST = withApi(async (ctx) => {
   });
   emitRealtime("evm:changed", { projectId: project.id, periodId: period.id, source }, `project:${project.id}`);
   await recalcProjectHealth(project.id, source);
-  // Automation cascade: threshold rules (e.g. SPI < 0.90) react to every period close
-  void runAutomations("EVM_PERIOD_CLOSED", { projectId: project.id, entityType: "EvmPeriod", entityId: period.id, spi: Math.round(spi * 100) / 100, cpi: Math.round(cpi * 100) / 100 });
+  // Automation cascade: every period close notifies legacy seeded rules (the seeded
+  // demo rule uses EVM_PERIOD_CLOSED), and a real breach (CPI or SPI under 0.95 —
+  // the governance engine's threshold) fires the legal EVM_BREACH trigger so
+  // user-created rules (validated against AUTOMATION_TRIGGERS) can react too.
+  const evmCtx = { projectId: project.id, entityType: "EvmPeriod", entityId: period.id, spi: Math.round(spi * 100) / 100, cpi: Math.round(cpi * 100) / 100, bac, eac, vac };
+  void runAutomations("EVM_PERIOD_CLOSED", evmCtx);
+  if (cpi < 0.95 || spi < 0.95) void runAutomations("EVM_BREACH", evmCtx);
 
   return ok({ period }, 201);
 }, { permission: "evm.manage", rateLimit: { limit: 60, windowMs: 60_000 } });

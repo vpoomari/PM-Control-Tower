@@ -9,6 +9,8 @@ import { db } from "@/lib/db";
 import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 import { writeAudit } from "@/lib/audit";
 import { emitRealtime, projectRoom } from "@/lib/realtime";
+import { recalcProjectHealth } from "@/lib/engines/health";
+import { evaluateGovernance } from "@/lib/engines/governance";
 
 const RISK_STATUSES = ["OPEN", "MITIGATING", "CLOSED", "ACCEPTED", "ESCALATED"] as const;
 
@@ -91,6 +93,16 @@ export const PATCH = withApi(async (ctx) => {
   const updated = await db.risk.update({ where: { id }, data });
   const residualScore = updated.residualProbability * updated.residualImpact;
 
+  // Cross-entity cascade: open-critical-risk counts drive the health score and the
+  // OPEN_RISKS governance metric — recalc both when severity/score/status moves.
+  const severityOrStatusChanged =
+    (body.probability !== undefined || body.impact !== undefined || body.status !== undefined) &&
+    (updated.severity !== before.severity || updated.score !== before.score || updated.status !== before.status);
+  if (severityOrStatusChanged && updated.projectId) {
+    await recalcProjectHealth(updated.projectId, "RISK_UPDATE");
+    void evaluateGovernance(updated.projectId).catch(() => undefined);
+  }
+
   await writeAudit({
     userId: session.id, userName: session.name, role: session.roles[0],
     action: "UPDATE", entityType: "Risk", entityId: id, entityName: `${updated.code} — ${updated.title}`,
@@ -113,6 +125,7 @@ export const DELETE = withApi(async (ctx) => {
   if (!risk) throw new ApiError(404, "Risk not found");
 
   await db.risk.delete({ where: { id } });
+  await recalcProjectHealth(risk.projectId, "RISK_DELETE");
   await writeAudit({
     userId: session.id, userName: session.name, role: session.roles[0],
     action: "DELETE", entityType: "Risk", entityId: id, entityName: `${risk.code} — ${risk.title}`,

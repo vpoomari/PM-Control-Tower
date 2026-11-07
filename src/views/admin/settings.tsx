@@ -2,15 +2,22 @@
 // PM CONTROL TOWER — ADMIN · System Configuration (read-only environment, readiness, deployment)
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { api, useApi } from "@/lib/client";
 import {
   PageHeader, SectionCard, StatCard, Button, Badge, LoadingBlock, ErrorBlock, cn,
 } from "@/components/pmct/kit";
+import AiProviderSettings from "./ai-settings";
 import { fmtDateTime, num } from "@/lib/constants";
 import {
   Settings, RefreshCw, CheckCircle2, AlertTriangle, Database, Radio, Server,
   Cloud, ShieldCheck, BookOpen, Boxes,
+  Trash2,
 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 interface TemplatesConfig {
   counts: Record<string, number>;
@@ -34,10 +41,13 @@ const ENV_KEYS: Array<{ key: keyof TemplatesConfig["environment"]; label: string
   { key: "realtimeUrlSet", label: "REALTIME_URL", hint: "Address of the realtime gateway service for event fan-out." },
 ];
 
-export default function AdminSettingsView() {
+export default function AdminSettingsView({ embedded = false }: { embedded?: boolean } = {}) {
   const config = useApi<TemplatesConfig>("/api/admin/templates-config");
   const ready = useApi<SystemReady>("/api/system/ready");
   const [probing, setProbing] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState("");
+  const [resetting, setResetting] = useState(false);
 
   const runProbe = async () => {
     setProbing(true);
@@ -50,17 +60,36 @@ export default function AdminSettingsView() {
     }
   };
 
+  const resetWorkspace = async () => {
+    if (confirmation !== "DELETE ALL DATA") return;
+    setResetting(true);
+    try {
+      const result = await api.post<{ deletedRecords: number; clearedTables: number }>("/api/admin/reset-workspace", { confirmation });
+      toast.success("Workspace reset", { description: `${result.deletedRecords} records cleared from ${result.clearedTables} tables. Your accounts and administration settings were retained.` });
+      setResetOpen(false);
+      setConfirmation("");
+      await Promise.all([config.refetch(), ready.refetch()]);
+      window.location.hash = "/dashboard";
+    } catch (e) {
+      toast.error("Workspace reset failed", { description: e instanceof Error ? e.message : "No data was changed." });
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const counts = config.data?.counts;
   const env = config.data?.environment;
   const checks = ready.data?.checks;
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="System Configuration"
-        breadcrumb={["Administration", "Settings"]}
-        subtitle="Read-only operations view — environment readiness, entity volumes and gateway status. Secrets are never displayed; only their configured state."
-      />
+      {!embedded && (
+        <PageHeader
+          title="System Configuration"
+          breadcrumb={["Administration", "Settings"]}
+          subtitle="Environment readiness, entity volumes, gateway status and the Bring-Your-Own-Key AI provider. Secrets are never displayed; only their configured state."
+        />
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
@@ -172,6 +201,40 @@ export default function AdminSettingsView() {
           )}
         </SectionCard>
       </div>
+
+      {/* AI provider — Bring Your Own Key (one saved key activates AI app-wide) */}
+      <AiProviderSettings />
+
+      <SectionCard title="Danger zone" description="Irreversible workspace-wide actions">
+        <div className="flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-red-950">Start from scratch</p>
+            <p className="mt-1 text-xs leading-relaxed text-red-800">Deletes all workspace and business data, including projects, tasks, financials, reports, integrations, and history. Accounts, roles, permissions, and system configuration remain so you can sign in and configure the blank workspace.</p>
+          </div>
+          <Button variant="outline" className="shrink-0 border-red-300 text-red-700 hover:bg-red-100 hover:text-red-800" onClick={() => setResetOpen(true)}>
+            <Trash2 className="mr-1.5 h-4 w-4" /> Delete all workspace data
+          </Button>
+        </div>
+      </SectionCard>
+
+      <Dialog open={resetOpen} onOpenChange={(open) => { if (!resetting) { setResetOpen(open); if (!open) setConfirmation(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-700">Delete all workspace data?</DialogTitle>
+            <DialogDescription>This cannot be undone. The workspace will be blank after the reset. User accounts, roles, permissions, and system settings are retained.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-slate-700" htmlFor="reset-confirmation">Type <span className="font-mono">DELETE ALL DATA</span> to confirm</label>
+            <Input id="reset-confirmation" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} autoComplete="off" disabled={resetting} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetOpen(false)} disabled={resetting}>Cancel</Button>
+            <Button variant="destructive" onClick={resetWorkspace} disabled={confirmation !== "DELETE ALL DATA" || resetting}>
+              <Trash2 className="mr-1.5 h-4 w-4" /> {resetting ? "Deleting…" : "Delete all data"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Entity counts */}
       <SectionCard title="Entity volumes" description="Live counts from the platform configuration endpoint">

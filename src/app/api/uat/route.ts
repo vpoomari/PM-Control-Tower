@@ -10,7 +10,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 import { writeAudit } from "@/lib/audit";
-import { emitRealtime } from "@/lib/realtime";
+import { emitRealtime, projectRoom } from "@/lib/realtime";
 
 export const GET = withApi(async (ctx) => {
   const projectId = ctx.searchParams.get("projectId");
@@ -52,6 +52,9 @@ export const POST = withApi(async (ctx) => {
     where: { id: body.caseId },
     data: { status: body.status, executedBy: body.executedBy ?? session.name, executedAt: new Date(), defectRef: body.defectRef ?? null, notes: body.notes ?? null },
   });
-  emitRealtime("project:updated", { uatCaseId: uatCase.id, status: uatCase.status }, `project:${uatCase.cycleId}`);
+  // Room must be the PROJECT id — cycleId is a UatCycle id, so this event used to
+  // target a nonexistent room and no project view ever saw it.
+  const cycle = await db.uatCycle.findUnique({ where: { id: uatCase.cycleId }, select: { projectId: true } });
+  emitRealtime("project:updated", { uatCaseId: uatCase.id, status: uatCase.status }, cycle ? projectRoom(cycle.projectId) : undefined);
   return ok({ uatCase });
 }, { permission: "wbs.manage", rateLimit: { limit: 120, windowMs: 60_000 } });

@@ -1,7 +1,7 @@
 "use client";
 // PM CONTROL TOWER — Design system primitives (premium enterprise, blue/navy foundation)
 
-import { ReactNode, useState } from "react";
+import { ReactNode, isValidElement, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,23 +67,100 @@ export function PageHeader({ title, subtitle, actions, breadcrumb, io }: {
 }
 
 // ---- Stat card ----
-export function StatCard({ label, value, sub, tone, icon }: {
+// Enterprise KPI card: optional delta badge (vs prior period), inline sparkline,
+// and click-to-drill (renders as a button when onClick is provided).
+export function StatCard({ label, value, sub, tone, icon, delta, spark, onClick, hint }: {
   label: string; value: ReactNode; sub?: ReactNode; tone?: "default" | "good" | "warn" | "bad" | "info"; icon?: ReactNode;
+  /** Period-over-period delta, e.g. { value: 12, unit: "%", good: true } — renders a colored badge. */
+  delta?: { value: number; unit?: string; good?: boolean; label?: string };
+  /** Sparkline series (renders an inline mini-chart under the value). */
+  spark?: number[];
+  /** Makes the whole card clickable (drill-down affordance). */
+  onClick?: () => void;
+  /** Tooltip hint for clickable cards. */
+  hint?: string;
 }) {
   const tones: Record<string, string> = {
     default: "text-slate-900", good: "text-emerald-600", warn: "text-amber-600", bad: "text-red-600", info: "text-blue-600",
   };
+  const body = (
+    <>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
+        {icon && <span className="text-slate-300">{icon}</span>}
+      </div>
+      <div className="flex items-baseline gap-2 mt-1">
+        <p className={cn("text-2xl font-semibold tabular-nums", tone ? tones[tone] : tones.default)}>{value}</p>
+        {delta && (
+          <span
+            className={cn(
+              "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums border",
+              delta.good === undefined ? "bg-slate-50 text-slate-500 border-slate-200"
+                : delta.good ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-red-50 text-red-600 border-red-200",
+            )}
+            title={delta.label}
+          >
+            {delta.value > 0 ? "▲" : delta.value < 0 ? "▼" : "•"} {Math.abs(delta.value)}{delta.unit ?? ""}
+          </span>
+        )}
+      </div>
+      {spark && spark.length > 1 && <Sparkline data={spark} tone={tone ?? "default"} />}
+      {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
+    </>
+  );
+  if (onClick) {
+    return (
+      <Card className="ct-tile border-slate-200 shadow-sm transition-all cursor-pointer hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+        onClick={onClick} role="button" tabIndex={0} title={hint || `Open ${label}`}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+      >
+        <CardContent className="p-4">{body}</CardContent>
+      </Card>
+    );
+  }
   return (
-    <Card className="border-slate-200 shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-          {icon && <span className="text-slate-300">{icon}</span>}
-        </div>
-        <p className={cn("text-2xl font-semibold mt-1 tabular-nums", tone ? tones[tone] : tones.default)}>{value}</p>
-        {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
-      </CardContent>
+    <Card className="ct-tile border-slate-200 shadow-sm">
+      <CardContent className="p-4">{body}</CardContent>
     </Card>
+  );
+}
+
+// Tiny inline sparkline (no chart library) — 100x28 viewBox, area + line.
+export function Sparkline({ data, tone = "default", className }: { data: number[]; tone?: string; className?: string }) {
+  if (data.length < 2) return null;
+  const w = 100, h = 28, pad = 2;
+  const min = Math.min(...data), max = Math.max(...data);
+  const span = max - min || 1;
+  const pts = data.map((v, i) => [
+    pad + (i * (w - pad * 2)) / (data.length - 1),
+    h - pad - ((v - min) / span) * (h - pad * 2),
+  ]);
+  const line = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
+  const area = `${line} L ${pts[pts.length - 1][0].toFixed(1)} ${h} L ${pts[0][0].toFixed(1)} ${h} Z`;
+  const stroke = tone === "bad" ? "#dc2626" : tone === "warn" ? "#d97706" : tone === "info" ? "#2563eb" : "#059669";
+  const fill = tone === "bad" ? "#dc262618" : tone === "warn" ? "#d9770618" : tone === "info" ? "#2563eb18" : "#05966918";
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className={cn("w-full h-7 mt-1.5", className)} aria-hidden="true">
+      <path d={area} fill={fill} />
+      <path d={line} fill="none" stroke={stroke} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// ---- Live freshness pill ----
+export function LiveBadge({ at, label }: { at?: string | null; label?: string }) {
+  if (!at) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700"
+      title={`Generated ${new Date(at).toLocaleString()}`}
+    >
+      <span className="relative flex h-1.5 w-1.5">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      </span>
+      {label ?? "Live"} · {new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+    </span>
   );
 }
 
@@ -219,7 +296,7 @@ export function ProgressBar({ value, className, tone }: { value: number; classNa
   const v = Math.max(0, Math.min(100, value || 0));
   const color = tone === "blue" ? "bg-blue-500" : v >= 80 ? "bg-emerald-500" : v >= 40 ? "bg-blue-500" : "bg-amber-500";
   return (
-    <div className={cn("h-1.5 w-full rounded-full bg-slate-100 overflow-hidden", className)}>
+    <div className={cn("ct-progress h-1.5 w-full rounded-full bg-slate-100 overflow-hidden", className)}>
       <div className={cn("h-full rounded-full transition-all", color)} style={{ width: `${v}%` }} />
     </div>
   );
@@ -233,9 +310,11 @@ export interface Column<T> {
   className?: string;
 }
 export function DataTable<T extends Record<string, unknown>>({
-  columns, rows, keyField, onRowClick, emptyTitle, emptyDescription, className, maxHeight,
+  columns, rows, keyField, onRowClick, onRowDoubleClick, emptyTitle, emptyDescription, className, maxHeight,
 }: {
   columns: Column<T>[]; rows: T[]; keyField: string; onRowClick?: (row: T) => void;
+  /** Double-click a row to open its edit dialog (used across editable tables). */
+  onRowDoubleClick?: (row: T) => void;
   emptyTitle?: string; emptyDescription?: string; className?: string; maxHeight?: string;
 }) {
   if (!rows.length) return <EmptyState title={emptyTitle || "No records"} description={emptyDescription} />;
@@ -254,7 +333,8 @@ export function DataTable<T extends Record<string, unknown>>({
             <tr
               key={String(row[keyField])}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className={cn("border-b border-slate-100 last:border-0", onRowClick && "cursor-pointer hover:bg-blue-50/40")}
+              onDoubleClick={onRowDoubleClick ? () => onRowDoubleClick(row) : undefined}
+              className={cn("border-b border-slate-100 last:border-0", (onRowClick || onRowDoubleClick) && "cursor-pointer hover:bg-blue-50/40")}
             >
               {columns.map((c) => (
                 <td key={c.key} className={cn("px-3 py-2.5 text-slate-700 align-middle", c.className)}>
@@ -274,10 +354,11 @@ export function ConfirmButton({ onConfirm, children, title, description, confirm
   onConfirm: () => void; children: ReactNode; title: string; description?: string; confirmLabel?: string;
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"; size?: "default" | "sm" | "lg" | "icon"; className?: string;
 }) {
+  const child = isValidElement(children) ? children : (<Button variant={variant} size={size} className={className}>{children}</Button>);
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        {typeof children === "object" ? children : <Button variant={variant} size={size} className={className}>{children}</Button>}
+        {child}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>

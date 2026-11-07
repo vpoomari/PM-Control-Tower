@@ -10,6 +10,7 @@ import { writeAudit } from "@/lib/audit";
 import { emitRealtime, projectRoom } from "@/lib/realtime";
 import { rescheduleProject, rollupWbsActuals } from "@/lib/engines/rollup";
 import { recalcProjectHealth } from "@/lib/engines/health";
+import { fireAutomations } from "@/lib/engines/automations";
 import { TASK_STATUS, PRIORITY, round2 } from "@/lib/constants";
 
 const taskUpdateSchema = z.object({
@@ -30,7 +31,9 @@ const taskUpdateSchema = z.object({
   actualCost: z.coerce.number().min(0).optional(),
   assigneeId: z.string().nullable().optional(),
   wbsId: z.string().nullable().optional(),
-  constraintType: z.string().optional(),
+  constraintType: z.enum(["ASAP", "ALAP", "MSO", "SNET", "SNLT", "FNET", "FNLT"]).optional(),
+  constraintDate: z.coerce.date().optional().nullable(),
+  deadline: z.coerce.date().optional().nullable(),
 });
 
 export const GET = withApi(async (ctx) => {
@@ -39,7 +42,7 @@ export const GET = withApi(async (ctx) => {
     where: { id: taskId, projectId: id },
     include: {
       wbs: { select: { id: true, code: true, name: true } },
-      assignee: { select: { id: true, name: true, email: true, avatarColor: true } },
+      assignee: { select: { id: true, name: true, email: true, avatarColor: true, avatarUrl: true } },
     },
   });
   if (!task) throw new ApiError(404, "Task not found in this project");
@@ -87,7 +90,10 @@ export const PATCH = withApi(async (ctx) => {
     (body.startDate !== undefined && body.startDate?.getTime() !== before.startDate?.getTime()) ||
     (body.endDate !== undefined && body.endDate?.getTime() !== before.endDate?.getTime()) ||
     (body.durationDays !== undefined && body.durationDays !== before.durationDays) ||
-    (body.status !== undefined && body.status !== before.status);
+    (body.status !== undefined && body.status !== before.status) ||
+    (body.constraintType !== undefined && body.constraintType !== before.constraintType) ||
+    (body.constraintDate !== undefined && body.constraintDate?.getTime() !== before.constraintDate?.getTime()) ||
+    (body.deadline !== undefined && body.deadline?.getTime() !== before.deadline?.getTime());
 
   const wbsRelevant =
     (body.plannedHours !== undefined && body.plannedHours !== before.plannedHours) ||
@@ -97,12 +103,29 @@ export const PATCH = withApi(async (ctx) => {
     (body.wbsId !== undefined && body.wbsId !== before.wbsId) ||
     scheduleChanged;
 
+  const statusChanged = body.status !== undefined && body.status !== before.status;
+
   if (scheduleChanged) {
+    // Cascade (bug fix): WBS roll-up must ALSO run on reschedules — wbsRelevant
+    // includes scheduleChanged, so the old `else if` skipped rollups on every
+    // progress/status/date edit, leaving WBS nodes stale.
     await rescheduleProject(id);
+    await rollupWbsActuals(id);
     await recalcProjectHealth(id, "TASK_UPDATE");
   } else if (wbsRelevant) {
     await rollupWbsActuals(id);
   }
+
+  // Cross-entity automations: status movement → STATUS_CHANGED; date/progress/
+  // duration movement → SCHEDULE_CHANGED. Fire-and-forget (never block the edit).
+  if (statusChanged) {
+    fireAutomations("STATUS_CHANGED", {
+      entityType: "Task", entityId: taskId, projectId: id,
+      code: task.code, name: task.name, status: task.status, previousStatus: before.status,
+      progress: task.progress, criticality: task.criticality,
+    });
+  }
+  // SCHEDULE_CHANGED is emitted centrally by rescheduleProject above (single source).
 
   await writeAudit({
     userId: ctx.session?.id, userName: ctx.session?.name, role: ctx.session?.roles[0],
@@ -128,6 +151,7 @@ export const DELETE = withApi(async (ctx) => {
 
   await rescheduleProject(id);
   await rollupWbsActuals(id);
+  await recalcProjectHealth(id, "TASK_DELETE"); // parity with PATCH — deletions move health too
   await writeAudit({
     userId: ctx.session?.id, userName: ctx.session?.name, role: ctx.session?.roles[0],
     action: "DELETE", entityType: "Task", entityId: taskId, entityName: `${task.code} ${task.name}`,

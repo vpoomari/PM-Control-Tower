@@ -1,7 +1,7 @@
 "use client";
 // PM CONTROL TOWER — Plan: requirements capture against the selected project
 
-import { useApi } from "@/lib/client";
+import { useApi, useRealtimeRefetch } from "@/lib/client";
 import { PageHeader, EmptyState, StatCard, LoadingBlock, ErrorBlock } from "@/components/pmct/kit";
 import { ProjectPicker, useStoredProjectId } from "./shared/ProjectPicker";
 import RequirementsPanel from "./shared/RequirementsPanel";
@@ -13,6 +13,7 @@ interface RequirementsBundle { items: ReqLite[]; total: number }
 export default function RequirementsView() {
   const [projectId, setProjectId] = useStoredProjectId();
   const summary = useApi<RequirementsBundle>(projectId ? `/api/projects/${projectId}/requirements` : null);
+  useRealtimeRefetch(summary.refetch, ["requirement:changed", "project:updated"]);
 
   const items = summary.data?.items || [];
   const byStatus = (s: string) => items.filter((r) => r.status === s).length;
@@ -39,7 +40,7 @@ export default function RequirementsView() {
         )
       )}
 
-      {projectId ? <RequirementsPanel key={projectId} projectId={projectId} /> : (
+      {projectId ? <RequirementsPanel key={projectId} projectId={projectId} onDataChanged={summary.refetch} /> : (
         <EmptyState title="No project selected" description="Pick a project above to manage its requirements." />
       )}
     </div>

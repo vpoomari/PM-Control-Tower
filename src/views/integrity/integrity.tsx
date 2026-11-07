@@ -62,6 +62,12 @@ export default function IntegrityView() {
   const benefits = useApi<{ projects: BenefitProjectRow[]; totals: { promised: number; delivered: number; realizationPct: number } }>(tab === "Benefits" ? "/api/integrity/benefits" : null);
   const dq = useApi<{ projects: DqRow[]; averageScore: number; resourceIssues: { total: number; withoutSkills: number; names: string[] } }>(tab === "Data Quality" ? "/api/integrity/data-quality" : null);
   const runs = useApi<{ runs: SimRun[] }>(tab === "Simulations" && projectId ? `/api/integrity/simulate?projectId=${projectId}` : null);
+  // Live: freshness, data quality and benefits all derive from live feeds — refresh
+  // them when the underlying data moves (was: imported but never subscribed).
+  useRealtimeRefetch(fresh.refetch, ["actuals:changed", "data:imported", "project:updated", "evm:changed"]);
+  useRealtimeRefetch(dq.refetch, ["actuals:changed", "data:imported", "project:updated", "raid:changed"]);
+  useRealtimeRefetch(benefits.refetch, ["benefits:updated", "actuals:changed", "project:updated"]);
+  useRealtimeRefetch(bundles.refetch, ["audit:created", "project:updated"]);
 
   const [sim, setSim] = useState<SimResult | null>(null);
   const [busy, setBusy] = useState(false);

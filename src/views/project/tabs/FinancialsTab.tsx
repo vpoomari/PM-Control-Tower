@@ -1,13 +1,23 @@
 "use client";
 // PM CONTROL TOWER — Workspace Financials tab: budget lines by category, variance, stacked bars
+// Budget lines are editable in place: double-click a row (requires financial.manage).
 
-import { useApi } from "@/lib/client";
-import { LoadingBlock, ErrorBlock, SectionCard, StatCard } from "@/components/pmct/kit";
-import { money, num, pct } from "@/lib/constants";
+import { useState } from "react";
+import { toast } from "sonner";
+import { api, useApi } from "@/lib/client";
+import { LoadingBlock, ErrorBlock, SectionCard, StatCard, Button, cn } from "@/components/pmct/kit";
+import { money, num, pct, BUDGET_CATEGORIES } from "@/lib/constants";
+import { useMe, hasPerm } from "@/views/execute/shared/pickers";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, Legend, CartesianGrid,
 } from "recharts";
-import { Wallet, Receipt, TrendingUp, Scale } from "lucide-react";
+import { Wallet, Receipt, TrendingUp, Scale, Pencil } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
 interface FinCategory {
   category: string;
@@ -30,6 +40,8 @@ interface BudgetLine {
 }
 interface LinesBundle { budgetLines: BudgetLine[]; total: number }
 
+interface LineForm { category: string; name: string; baselineAmount: string; currentAmount: string; actualAmount: string; forecastAmount: string }
+
 const SERIES = [
   { key: "baselineAmount", label: "Baseline", color: "#94a3b8" },
   { key: "currentAmount", label: "Current", color: "#2563eb" },
@@ -38,8 +50,43 @@ const SERIES = [
 ] as const;
 
 export default function FinancialsTab({ projectId }: { projectId: string }) {
+  const me = useMe();
+  const canManage = hasPerm(me, "financial.manage");
   const fin = useApi<FinBundle>(`/api/financials?projectId=${projectId}`);
   const lines = useApi<LinesBundle>(`/api/financials/budget-lines?projectId=${projectId}`);
+
+  const [editing, setEditing] = useState<BudgetLine | null>(null);
+  const [form, setForm] = useState<LineForm>({ category: "LABOR", name: "", baselineAmount: "0", currentAmount: "0", actualAmount: "0", forecastAmount: "0" });
+  const [saving, setSaving] = useState(false);
+
+  const openEdit = (l: BudgetLine) => {
+    if (!canManage) { toast.error("Editing budget lines requires the “financial.manage” permission."); return; }
+    setEditing(l);
+    setForm({
+      category: l.category, name: l.name,
+      baselineAmount: String(l.baselineAmount), currentAmount: String(l.currentAmount),
+      actualAmount: String(l.actualAmount), forecastAmount: String(l.forecastAmount),
+    });
+  };
+
+  const saveLine = async () => {
+    if (!editing) return;
+    if (form.name.trim().length < 2) { toast.error("Line name is required"); return; }
+    const nums = [form.baselineAmount, form.currentAmount, form.actualAmount, form.forecastAmount].map(Number);
+    if (nums.some((n) => !Number.isFinite(n) || n < 0)) { toast.error("Amounts must be non-zero-or-positive numbers"); return; }
+    setSaving(true);
+    try {
+      await api.patch(`/api/financials/budget-lines/${editing.id}`, {
+        category: form.category, name: form.name.trim(),
+        baselineAmount: nums[0], currentAmount: nums[1], actualAmount: nums[2], forecastAmount: nums[3],
+      });
+      toast.success(`Budget line “${form.name.trim()}” updated`);
+      setEditing(null);
+      await Promise.all([lines.refetch(), fin.refetch()]);
+    } catch (e) {
+      toast.error("Could not update the budget line", { description: e instanceof Error ? e.message : "Unknown error" });
+    } finally { setSaving(false); }
+  };
 
   if (fin.loading) return <LoadingBlock label="Loading financials…" />;
   if (fin.error || !fin.data) return <ErrorBlock message={fin.error || "Financials unavailable"} onRetry={fin.refetch} />;
@@ -85,7 +132,7 @@ export default function FinancialsTab({ projectId }: { projectId: string }) {
           )}
         </SectionCard>
 
-        <SectionCard title="Budget lines by category" description={`${lines.data?.total ?? 0} lines · baseline / current / actual / forecast`}>
+        <SectionCard title="Budget lines by category" description={`${lines.data?.total ?? 0} lines · baseline / current / actual / forecast${canManage ? " · double-click a row to edit" : ""}`}>
           {lines.loading ? <LoadingBlock label="Loading budget lines…" /> : lines.error ? <ErrorBlock message={lines.error} onRetry={lines.refetch} /> : (
             <div className="rounded-lg border border-slate-200 overflow-auto max-h-72">
               <table className="w-full text-sm">
@@ -101,9 +148,19 @@ export default function FinancialsTab({ projectId }: { projectId: string }) {
                 </thead>
                 <tbody>
                   {(lines.data?.budgetLines || []).map((l) => (
-                    <tr key={l.id} className="border-b border-slate-100 last:border-0 hover:bg-blue-50/40">
+                    <tr
+                      key={l.id}
+                      onDoubleClick={() => openEdit(l)}
+                      title={canManage ? "Double-click to edit" : "View only — editing requires financial.manage"}
+                      className={cn("border-b border-slate-100 last:border-0 hover:bg-blue-50/40", canManage && "cursor-pointer")}
+                    >
                       <td className="px-3 py-2 text-xs font-medium text-slate-600">{l.category}</td>
-                      <td className="px-3 py-2 text-slate-700">{l.name}</td>
+                      <td className="px-3 py-2 text-slate-700">
+                        <span className="inline-flex items-center gap-1.5">
+                          {l.name}
+                          {canManage && <Pencil className="h-3 w-3 text-slate-300" aria-hidden="true" />}
+                        </span>
+                      </td>
                       <td className="px-3 py-2 text-right tabular-nums text-xs text-slate-500">{money(l.baselineAmount)}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-xs text-blue-700">{money(l.currentAmount)}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-xs text-sky-700">{money(l.actualAmount)}</td>
@@ -158,6 +215,50 @@ export default function FinancialsTab({ projectId }: { projectId: string }) {
           </table>
         </div>
       </SectionCard>
+
+      {/* Double-click edit dialog for a budget line */}
+      <Dialog open={editing !== null} onOpenChange={(o) => { if (!o) setEditing(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit budget line{editing ? ` — ${editing.name}` : ""}</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-3.5">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-slate-600">Category</Label>
+                  <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+                    <SelectTrigger className="h-9 mt-1 bg-white"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {BUDGET_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-slate-600">Line name</Label>
+                  <Input className="h-9 mt-1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {(["baselineAmount", "currentAmount", "actualAmount", "forecastAmount"] as const).map((k) => (
+                  <div key={k}>
+                    <Label className="text-xs text-slate-600 capitalize">{k.replace("Amount", " amount")}</Label>
+                    <Input
+                      type="number" min={0} step="0.01" className="h-9 mt-1 tabular-nums"
+                      value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-400">Changes recalculate category variance immediately; EVM/health figures refresh on the next actuals event. Updates are audited.</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button onClick={saveLine} disabled={saving}>{saving ? "Saving…" : "Save changes"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

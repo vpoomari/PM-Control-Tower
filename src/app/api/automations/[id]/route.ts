@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { withApi, ok, ApiError, parseBody } from "@/lib/api";
-import { toJson } from "@/lib/constants";
+import { toJson, AUTOMATION_ACTIONS } from "@/lib/constants";
 import { writeAudit } from "@/lib/audit";
 
 const conditionSchema = z.object({
@@ -14,8 +14,10 @@ const conditionSchema = z.object({
   value: z.unknown().optional(),
 });
 
+// Action types are a fixed enum (parity with POST) — unknown types would silently
+// no-op in the engine's default branch, so reject them at the API boundary.
 const actionSchema = z.object({
-  type: z.string().min(1),
+  type: z.string().refine((t) => (AUTOMATION_ACTIONS as readonly string[]).includes(t), "Unknown action type"),
   params: z.record(z.string(), z.unknown()).optional(),
 });
 

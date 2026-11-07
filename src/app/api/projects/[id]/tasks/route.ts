@@ -8,6 +8,7 @@ import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 import { writeAudit } from "@/lib/audit";
 import { emitRealtime, projectRoom } from "@/lib/realtime";
 import { rescheduleProject, rollupWbsActuals } from "@/lib/engines/rollup";
+import { recalcProjectHealth } from "@/lib/engines/health";
 import { TASK_STATUS, PRIORITY, round2 } from "@/lib/constants";
 
 const taskCreateSchema = z.object({
@@ -24,6 +25,10 @@ const taskCreateSchema = z.object({
   plannedHours: z.coerce.number().min(0).optional(),
   plannedCost: z.coerce.number().min(0).optional(),
   assigneeId: z.string().optional().nullable(),
+  // Planning Lab parity: create accepts the same scheduling fields as PATCH
+  constraintType: z.enum(["ASAP", "ALAP", "MSO", "SNET", "SNLT", "FNET", "FNLT"]).optional(),
+  constraintDate: z.coerce.date().optional().nullable(),
+  deadline: z.coerce.date().optional().nullable(),
 });
 
 export const GET = withApi(async (ctx) => {
@@ -47,7 +52,7 @@ export const GET = withApi(async (ctx) => {
     orderBy: [{ code: "asc" }],
     include: {
       wbs: { select: { id: true, code: true, name: true } },
-      assignee: { select: { id: true, name: true, avatarColor: true } },
+      assignee: { select: { id: true, name: true, avatarColor: true, avatarUrl: true } },
     },
   });
 
@@ -120,6 +125,9 @@ export const POST = withApi(async (ctx) => {
       plannedCost: body.plannedCost ?? 0,
       remainingHours: body.plannedHours ? round2(body.plannedHours * (1 - (body.progress ?? 0) / 100)) : 0,
       assigneeId: body.assigneeId ?? null,
+      constraintType: body.constraintType ?? "ASAP",
+      constraintDate: body.constraintDate ?? null,
+      deadline: body.deadline ?? null,
     },
     include: {
       wbs: { select: { id: true, code: true, name: true } },
@@ -129,6 +137,7 @@ export const POST = withApi(async (ctx) => {
 
   await rescheduleProject(id);
   await rollupWbsActuals(id);
+  await recalcProjectHealth(id, "TASK_CREATE"); // parity with PATCH — new work moves health
   await writeAudit({
     userId: ctx.session?.id, userName: ctx.session?.name, role: ctx.session?.roles[0],
     action: "CREATE", entityType: "Task", entityId: task.id, entityName: `${task.code} ${task.name}`,

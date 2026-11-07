@@ -14,8 +14,12 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import { customFieldColumns } from "@/components/fields/custom-columns";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
 
 interface AuditEvent {
+  [key: string]: unknown;
   id: string; userId: string | null; userName: string | null; role: string | null;
   action: string; entityType: string; entityId: string | null; entityName: string | null;
   beforeJson: string | null; afterJson: string | null; ipAddress: string | null;
@@ -87,6 +91,11 @@ export default function AdminAuditView() {
   const hasNext = events.length === TAKE;
   const filtersActive = entityType !== "ALL" || action !== "ALL" || severity !== "ALL" || Boolean(freeText) || fromDate || toDate;
 
+  // --- Field Dictionary: dictionary fields assigned to audit_trail (append-only module:
+  // the values API blocks writes, so the record sheet renders read-only by design) ---
+  const fields = useModuleFieldsHandle("audit_trail", events.map((r) => r.id));
+  const cfColumns = customFieldColumns<AuditEvent>(fields.tableColumns, fields.values);
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -94,7 +103,12 @@ export default function AdminAuditView() {
         title="Audit Trail"
         breadcrumb={["Administration", "Audit"]}
         subtitle="Immutable record of every privileged action — who, what, when, from where, and the exact before/after values. Read-only by design."
-        actions={<Button variant="outline" size="sm" onClick={list.refetch}><RefreshCw className="h-4 w-4 mr-1.5" /> Refresh</Button>}
+        actions={
+          <>
+            {fields.actions}
+            <Button variant="outline" size="sm" onClick={list.refetch}><RefreshCw className="h-4 w-4 mr-1.5" /> Refresh</Button>
+          </>
+        }
       />
 
       <SectionCard title="Filters" description="Server-side filtering — results are exact, not client-trimmed">
@@ -168,9 +182,16 @@ export default function AdminAuditView() {
                     <span className="text-xs text-slate-500 min-w-0 truncate">
                       {ev.entityType}{ev.entityName ? ` — ${ev.entityName}` : ev.entityId ? ` — ${ev.entityId.slice(0, 10)}…` : ""}
                     </span>
+                    {/* Field Dictionary: dictionary fields assigned to audit_trail render as extra columns */}
+                    {cfColumns.map((c) => (
+                      <span key={c.key} title={c.header} className="text-xs text-slate-600 min-w-0 inline-block max-w-[240px] truncate align-middle">
+                        <span className="text-slate-400">{c.header}:</span> {c.render?.(ev)}
+                      </span>
+                    ))}
                     <span className="ml-auto flex items-center gap-3 shrink-0">
                       <StatusChip status={ev.severity} />
                       <span className="text-[11px] text-slate-400 tabular-nums hidden md:inline">{ev.ipAddress ?? ""}</span>
+                      <RecordFieldsButton moduleKey="audit_trail" recordId={ev.id} label={ev.entityName ?? ev.action} onSaved={fields.refetch} />
                     </span>
                   </button>
                   {open && hasDiff && (

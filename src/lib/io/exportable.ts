@@ -2,8 +2,10 @@
 // support full-fidelity export (every field) but are not bulk-importable through CSV.
 
 import { db } from "@/lib/db";
-import { isoStr, dateStr } from "./shared";
+import { isoStr, dateStr, projectByCode, required } from "./shared";
 import type { EntityDef } from "./shared";
+import { toNum, toStr } from "@/lib/csv";
+import { rollupWbsActuals } from "@/lib/engines/rollup";
 
 export const timesheets: EntityDef = {
   label: "Timesheets",
@@ -210,6 +212,7 @@ export const baselines: EntityDef = {
 export const wbsNodes: EntityDef = {
   label: "WBS Nodes",
   viewPermission: "project.view",
+  managePermission: "wbs.manage",
   columns: [
     { key: "id", label: "ID" },
     { key: "projectCode", label: "Project Code" },
@@ -229,7 +232,12 @@ export const wbsNodes: EntityDef = {
     { key: "createdAt", label: "Created At" },
     { key: "updatedAt", label: "Updated At" },
   ],
-  example: {},
+  example: {
+    "Project Code": "PRJ-ERP-001", Code: "1", Name: "Phase 1 — Foundation", Description: "Example summary row",
+    "Parent Code": "", "Node Type": "SUMMARY", Level: "1", "Order Index": "1", "Owner Name": "",
+    "Planned Hours": "0", "Planned Cost": "0", "Actual Hours": "0", "Actual Cost": "0", Progress: "0",
+    "Created At": "", "Updated At": "",
+  },
   exportRows: async () => {
     const rows = await db.wBSNode.findMany({ include: { project: true, parent: true }, orderBy: [{ projectId: "asc" }, { orderIndex: "asc" }] });
     return rows.map((w) => ({
@@ -240,7 +248,108 @@ export const wbsNodes: EntityDef = {
       actualCost: w.actualCost, progress: w.progress, createdAt: isoStr(w.createdAt), updatedAt: isoStr(w.updatedAt),
     }));
   },
-  applyRow: async () => { throw new Error("WBS import is not available — manage the tree in the WBS workspace"); },
+  applyRow: async (tx, row) => {
+    const project = await projectByCode(tx, toStr(row["Project Code"]));
+    const code = required(row, "Code");
+    const name = required(row, "Name");
+
+    const nodeType = toStr(row["Node Type"]);
+    if (nodeType && nodeType !== "SUMMARY" && nodeType !== "WORK_PACKAGE") {
+      throw new Error(`Node Type must be SUMMARY or WORK_PACKAGE (got "${nodeType}")`);
+    }
+    const progressRaw = toStr(row["Progress"]);
+    let progress: number | undefined;
+    if (progressRaw !== null) {
+      progress = toNum(progressRaw, 0);
+      if (progress < 0 || progress > 100) throw new Error(`Progress must be between 0 and 100 (got "${progressRaw}")`);
+    }
+    const orderRaw = toStr(row["Order Index"]);
+    let orderIndex: number | undefined;
+    if (orderRaw !== null) {
+      orderIndex = Number(orderRaw);
+      if (!Number.isInteger(orderIndex) || orderIndex < 0) {
+        throw new Error(`Order Index must be a non-negative integer (got "${orderRaw}")`);
+      }
+    }
+
+    const existing = await tx.wBSNode.findFirst({ where: { projectId: project.id, code } });
+    const parentCode = toStr(row["Parent Code"]);
+
+    // Resolve the parent: an earlier row of this file (already written in this transaction)
+    // or a node that exists already. Empty Parent Code keeps the current parent on update.
+    let parent: { id: string; level: number } | null = null;
+    if (parentCode) {
+      if (parentCode === code) throw new Error("A node cannot be its own parent");
+      const p = await tx.wBSNode.findFirst({ where: { projectId: project.id, code: parentCode }, select: { id: true, level: true, parentId: true } });
+      if (!p) throw new Error(`Parent node "${parentCode}" not found in ${project.code} — parent rows must appear before their children (or exist already)`);
+      // Cycle guard, mirroring the PATCH move: walk the proposed parent's ancestor chain.
+      let cursor = p.parentId;
+      let depth = 0;
+      while (cursor && depth < 100) {
+        if (existing && cursor === existing.id) throw new Error(`Move rejected: parent "${parentCode}" is a descendant of "${code}" (cycle)`);
+        const up = await tx.wBSNode.findUnique({ where: { id: cursor }, select: { parentId: true } });
+        cursor = up?.parentId ?? null;
+        depth += 1;
+      }
+      parent = { id: p.id, level: p.level };
+    }
+
+    if (existing) {
+      // Reparenting only happens when Parent Code is provided; level always follows the
+      // (new) parent. Order Index defaults to max+1 among the new siblings on a move.
+      let orderIndexFinal = orderIndex;
+      if (parent && orderIndexFinal === undefined && parent.id !== existing.parentId) {
+        const siblings = await tx.wBSNode.findMany({ where: { projectId: project.id, parentId: parent.id, NOT: { id: existing.id } }, select: { orderIndex: true } });
+        orderIndexFinal = siblings.reduce((m, s) => Math.max(m, s.orderIndex), 0) + 1;
+      }
+      const n = await tx.wBSNode.update({
+        where: { id: existing.id },
+        data: {
+          name,
+          description: toStr(row.Description),
+          nodeType: nodeType ?? undefined,
+          ...(parent ? { parentId: parent.id, level: parent.level + 1 } : {}),
+          ...(orderIndexFinal !== undefined ? { orderIndex: orderIndexFinal } : {}),
+          ownerName: toStr(row["Owner Name"]),
+          plannedHours: row["Planned Hours"] === "" ? undefined : toNum(row["Planned Hours"], 0),
+          plannedCost: row["Planned Cost"] === "" ? undefined : toNum(row["Planned Cost"], 0),
+          ...(progress !== undefined ? { progress } : {}),
+        },
+      });
+      return { action: "updated" as const, id: n.id, name: `${code} ${n.name}` };
+    }
+
+    const level = parent ? parent.level + 1 : 1;
+    let orderIndexFinal = orderIndex;
+    if (orderIndexFinal === undefined) {
+      const siblings = await tx.wBSNode.findMany({ where: { projectId: project.id, parentId: parent?.id ?? null }, select: { orderIndex: true } });
+      orderIndexFinal = siblings.reduce((m, s) => Math.max(m, s.orderIndex), 0) + 1;
+    }
+    const n = await tx.wBSNode.create({
+      data: {
+        projectId: project.id, code, parentId: parent?.id ?? null, name,
+        description: toStr(row.Description),
+        nodeType: nodeType ?? "WORK_PACKAGE",
+        level, orderIndex: orderIndexFinal,
+        ownerName: toStr(row["Owner Name"]),
+        plannedHours: toNum(row["Planned Hours"], 0),
+        plannedCost: toNum(row["Planned Cost"], 0),
+        actualHours: toNum(row["Actual Hours"], 0),
+        actualCost: toNum(row["Actual Cost"], 0),
+        progress: progress ?? 0,
+      },
+    });
+    return { action: "created" as const, id: n.id, name: `${code} ${n.name}` };
+  },
+  finalize: async (tx, rows) => {
+    // Summary nodes carry rolled-up hours/cost/progress — recompute per affected project
+    // so imported trees are consistent with their children (and project planned hours).
+    const projectCodes = new Set(rows.map((r) => toStr(r["Project Code"])).filter((c): c is string => Boolean(c)));
+    for (const projectCode of projectCodes) {
+      const p = await tx.project.findUnique({ where: { code: projectCode }, select: { id: true } });
+      if (p) await rollupWbsActuals(p.id, tx);
+    }
+  },
 };
 
 export const healthSnapshots: EntityDef = {

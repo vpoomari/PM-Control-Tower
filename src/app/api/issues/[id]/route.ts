@@ -8,6 +8,8 @@ import { db } from "@/lib/db";
 import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 import { writeAudit } from "@/lib/audit";
 import { emitRealtime, projectRoom } from "@/lib/realtime";
+import { recalcProjectHealth } from "@/lib/engines/health";
+import { evaluateGovernance } from "@/lib/engines/governance";
 
 const ISSUE_STATUSES = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"] as const;
 const RESOLVED_LIKE = ["RESOLVED", "CLOSED"];
@@ -68,6 +70,14 @@ export const PATCH = withApi(async (ctx) => {
 
   const updated = await db.issue.update({ where: { id }, data });
 
+  // Cross-entity cascade: open-critical-issue counts drive health + OPEN_ISSUES governance.
+  const materialChange =
+    updated.severity !== before.severity || updated.status !== before.status || updated.priority !== before.priority;
+  if (materialChange && updated.projectId) {
+    await recalcProjectHealth(updated.projectId, "ISSUE_UPDATE");
+    void evaluateGovernance(updated.projectId).catch(() => undefined);
+  }
+
   await writeAudit({
     userId: session.id, userName: session.name, role: session.roles[0],
     action: "UPDATE", entityType: "Issue", entityId: id, entityName: `${updated.code} — ${updated.title}`,
@@ -87,6 +97,7 @@ export const DELETE = withApi(async (ctx) => {
   if (!issue) throw new ApiError(404, "Issue not found");
 
   await db.issue.delete({ where: { id } });
+  await recalcProjectHealth(issue.projectId, "ISSUE_DELETE");
   await writeAudit({
     userId: session.id, userName: session.name, role: session.roles[0],
     action: "DELETE", entityType: "Issue", entityId: id, entityName: `${issue.code} — ${issue.title}`,

@@ -45,8 +45,8 @@ export const GET = withApi(async (ctx) => {
       select: {
         id: true, projectId: true, code: true, name: true, status: true, priority: true,
         progress: true, storyPoints: true, sprintId: true, epicId: true, backlogOrder: true,
-        endDate: true, assigneeId: true,
-        assignee: { select: { id: true, name: true, avatarColor: true } },
+        endDate: true, assigneeId: true, updatedAt: true,
+        assignee: { select: { id: true, name: true, avatarColor: true, avatarUrl: true } },
       },
       orderBy: [{ backlogOrder: "asc" }, { code: "asc" }],
       take: 800,

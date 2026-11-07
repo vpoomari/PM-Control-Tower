@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 import { writeAudit } from "@/lib/audit";
 import { round2 } from "@/lib/constants";
+import { isAvatarUrl } from "@/lib/avatars";
 
 export const GET = withApi(async (ctx) => {
   const { id } = ctx.params;
@@ -27,10 +28,17 @@ export const GET = withApi(async (ctx) => {
   });
   if (!resource) throw new ApiError(404, "Resource not found");
 
+  // Avatar precedence: the resource's own pick → the linked account's avatar → null (generated fallback).
+  const linked = resource.userId
+    ? await db.user.findUnique({ where: { id: resource.userId }, select: { avatarUrl: true } })
+    : null;
+  const resolvedAvatar = resource.avatarUrl ?? linked?.avatarUrl ?? null;
+
   const dailyCapacity = round2(resource.capacityHoursPerWeek / 5);
   return ok({
     resource: {
       ...resource,
+      avatarUrl: resolvedAvatar,
       weeklyCapacityProfile: {
         weeklyHours: resource.capacityHoursPerWeek,
         dailyHours: dailyCapacity,
@@ -49,6 +57,7 @@ export const GET = withApi(async (ctx) => {
 }, { permission: "resource.view", rateLimit: { limit: 300, windowMs: 60_000 } });
 
 const updateSchema = z.object({
+  employeeCode: z.string().min(2).max(32).optional(),
   name: z.string().min(2).optional(),
   email: z.string().email().optional(),
   title: z.string().optional().nullable(),
@@ -66,6 +75,8 @@ const updateSchema = z.object({
   managerName: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
   userId: z.string().optional().nullable(),
+  // Same whitelist discipline as the User row: only the 80 bundled avatars.
+  avatarUrl: z.string().refine(isAvatarUrl, "Invalid avatar").nullable().optional(),
 });
 
 export const PATCH = withApi(async (ctx) => {
@@ -76,12 +87,17 @@ export const PATCH = withApi(async (ctx) => {
 
   const before = await db.resource.findUnique({ where: { id } });
   if (!before) throw new ApiError(404, "Resource not found");
+  if (body.employeeCode && body.employeeCode !== before.employeeCode) {
+    const dupCode = await db.resource.findUnique({ where: { employeeCode: body.employeeCode }, select: { id: true } });
+    if (dupCode) throw new ApiError(409, `Employee code ${body.employeeCode} already exists`);
+  }
   if (body.userId) {
     const linked = await db.resource.findFirst({ where: { userId: body.userId, id: { not: id } }, select: { id: true } });
     if (linked) throw new ApiError(409, "User already linked to another resource record");
   }
 
   const data = {
+    ...(body.employeeCode !== undefined ? { employeeCode: body.employeeCode } : {}),
     ...(body.name !== undefined ? { name: body.name } : {}),
     ...(body.email !== undefined ? { email: body.email.toLowerCase() } : {}),
     ...(body.title !== undefined ? { title: body.title } : {}),
@@ -99,6 +115,7 @@ export const PATCH = withApi(async (ctx) => {
     ...(body.managerName !== undefined ? { managerName: body.managerName } : {}),
     ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
     ...(body.userId !== undefined ? { userId: body.userId } : {}),
+    ...(body.avatarUrl !== undefined ? { avatarUrl: body.avatarUrl } : {}),
   };
   if (Object.keys(data).length === 0) throw new ApiError(400, "No updatable fields provided");
 

@@ -14,6 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { money, num, fmtDate } from "@/lib/constants";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
 import { Plus, Pencil, Wallet, FolderKanban, TrendingUp, Landmark, Users } from "lucide-react";
 
 interface Owner { id: string; name: string; avatarColor: string }
@@ -68,6 +70,9 @@ export default function PortfoliosView() {
     });
     setDialogOpen(true);
   };
+
+  // --- Field Dictionary: assignments + bulk values for the portfolios ---
+  const fields = useModuleFieldsHandle("portfolio", (portfolios.data ?? []).map((p) => p.id));
 
   const save = async () => {
     if (form.code.trim().length < 2) { toast.error("Code must be at least 2 characters"); return; }
@@ -127,7 +132,12 @@ export default function PortfoliosView() {
         title="Portfolios"
         subtitle="Investment envelope, strategic alignment and delivery health across the enterprise change portfolio."
         breadcrumb={["Home", "Portfolios"]}
-        actions={<Button onClick={openCreate}><Plus className="h-4 w-4 mr-1.5" /> New portfolio</Button>}
+        actions={
+          <>
+            {fields.actions}
+            <Button onClick={openCreate}><Plus className="h-4 w-4 mr-1.5" /> New portfolio</Button>
+          </>
+        }
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -155,6 +165,8 @@ export default function PortfoliosView() {
                 key={p.id}
                 type="button"
                 onClick={() => setDetail(p)}
+                onDoubleClick={() => openEdit(p)}
+                title="Click to open · double-click to edit"
                 className="text-left rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-blue-200 transition-all p-4 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 aria-label={`Open portfolio ${p.name}`}
               >
@@ -269,6 +281,7 @@ export default function PortfoliosView() {
                 )}
               </div>
               <DialogFooter className="gap-2">
+                <RecordFieldsButton moduleKey="portfolio" recordId={detail.id} label={detail.code} onSaved={fields.refetch} />
                 <ConfirmButton variant="outline" title={`Delete ${detail.code}?`} description="Portfolios with programs or projects are protected by the server." confirmLabel="Delete" onConfirm={() => remove(detail)}>
                   <Button variant="outline" className="text-red-600 hover:bg-red-50">Delete</Button>
                 </ConfirmButton>

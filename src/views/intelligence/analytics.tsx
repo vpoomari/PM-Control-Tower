@@ -2,9 +2,9 @@
 // PM CONTROL TOWER — INTELLIGENCE · Analytics workspace (health timeline, EVM history, delivery trends)
 
 import { useMemo, useState } from "react";
-import { useApi } from "@/lib/client";
+import { useApi, useRealtimeRefetch } from "@/lib/client";
 import {
-  PageHeader, StatCard, SectionCard, LoadingBlock, ErrorBlock, RagBadge,
+  PageHeader, StatCard, SectionCard, LoadingBlock, ErrorBlock, RagBadge, LiveBadge,
 } from "@/components/pmct/kit";
 import { num } from "@/lib/constants";
 import {
@@ -18,6 +18,7 @@ import {
 // ---------- API types ----------
 interface AnalyticsReport {
   generatedAt: string;
+  weeks?: number;
   healthTimeline: Array<{
     projectId: string; projectCode: string; projectName: string;
     snapshots: Array<{ capturedAt: string; healthScore: number; ragStatus: string }>;
@@ -46,9 +47,13 @@ function fmtTick(iso: string): string {
 }
 
 export default function AnalyticsView() {
-  const analytics = useApi<AnalyticsReport>("/api/reports/analytics");
+  const [weeks, setWeeks] = useState<number>(8);
+  const analytics = useApi<AnalyticsReport>(`/api/reports/analytics?weeks=${weeks}`, [weeks]);
   const exec = useApi<ExecutiveKpis>("/api/reports/executive");
   const [evmProject, setEvmProject] = useState<string>("ALL");
+  // Live: trends refresh when health, actuals or report feeds move.
+  useRealtimeRefetch(analytics.refetch, ["project:health", "actuals:changed", "evm:changed", "report:generated", "data:imported"]);
+  useRealtimeRefetch(exec.refetch, ["project:updated", "project:health"]);
 
   const k = exec.data?.projectKpis;
 
@@ -101,19 +106,33 @@ export default function AnalyticsView() {
       <PageHeader
         title="Analytics Workspace"
         breadcrumb={["Intelligence", "Analytics"]}
-        subtitle={`Engine-computed trends across delivery, schedule, effort and RAID signals — generated ${new Date(a.generatedAt).toISOString().slice(0, 16).replace("T", " ")}`}
+        subtitle={`Engine-computed trends across delivery, schedule, effort and RAID signals — generated ${new Date(a.generatedAt).toISOString().slice(0, 16).replace("T", " ")} · ${a.weeks ?? weeks}-week window`}
         actions={
-          <Select value={evmProject} onValueChange={setEvmProject}>
-            <SelectTrigger className="h-9 w-[240px] bg-white">
-              <SelectValue placeholder="Filter EVM by project" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">EVM — All projects (mean)</SelectItem>
-              {evmSeries.map((p) => (
-                <SelectItem key={p.projectId} value={p.projectCode}>{p.projectCode}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <LiveBadge at={a.generatedAt} />
+            <Select value={String(weeks)} onValueChange={(v) => setWeeks(Number(v))}>
+              <SelectTrigger className="h-9 w-[150px] bg-white">
+                <SelectValue placeholder="Period" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="4">Last 4 weeks</SelectItem>
+                <SelectItem value="8">Last 8 weeks</SelectItem>
+                <SelectItem value="13">Last 13 weeks</SelectItem>
+                <SelectItem value="26">Last 26 weeks</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={evmProject} onValueChange={setEvmProject}>
+              <SelectTrigger className="h-9 w-[240px] bg-white">
+                <SelectValue placeholder="Filter EVM by project" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">EVM — All projects (mean)</SelectItem>
+                {evmSeries.map((p) => (
+                  <SelectItem key={p.projectId} value={p.projectCode}>{p.projectCode}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         }
       />
 

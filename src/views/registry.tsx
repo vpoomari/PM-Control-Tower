@@ -23,12 +23,14 @@ const TasksView = L(() => import("@/views/plan/tasks"));
 const ScheduleView = L(() => import("@/views/plan/schedule"));
 const MilestonesView = L(() => import("@/views/plan/milestones"));
 const BaselinesView = L(() => import("@/views/plan/baselines"));
+const ToolsView = L(() => import("@/views/plan/tools"));
 
 // --- Execute & Control views (batch F-B) ---
 const ResourcesView = L(() => import("@/views/execute/resources"));
 const TimesheetsView = L(() => import("@/views/execute/timesheets"));
 const InboxView = L(() => import("@/views/execute/inbox"));
 const PlannerView = L(() => import("@/views/execute/planner"));
+const PrioritiesView = L(() => import("@/views/priorities/priorities"));
 const FinancialsView = L(() => import("@/views/control/financials"));
 const EvmView = L(() => import("@/views/control/evm"));
 const HealthView = L(() => import("@/views/control/health"));
@@ -47,8 +49,13 @@ const AdminView = L(() => import("@/views/admin/admin"));
 const ReportsView = L(() => import("@/views/intelligence/reports"));
 const LeadershipView = L(() => import("@/views/intelligence/leadership"));
 const AnalyticsView = L(() => import("@/views/intelligence/analytics"));
+const InsightsHubView = L(() => import("@/views/intelligence/insights"));
+const InsightsReportView = L(() => import("@/views/intelligence/insights-report"));
 const AssistantView = L(() => import("@/views/intelligence/assistant"));
+const AiFeaturesView = L(() => import("@/views/ai/features"));
+const AiHubView = L(() => import("@/views/ai/hub"));
 const IntegrationsView = L(() => import("@/views/connect/integrations"));
+const HubView = L(() => import("@/views/connect/hub"));
 const AutomationsView = L(() => import("@/views/connect/automations"));
 const NotificationsView = L(() => import("@/views/connect/notifications"));
 const WebhooksView = L(() => import("@/views/connect/webhooks"));
@@ -58,7 +65,13 @@ const AdminUsersView = L(() => import("@/views/admin/users"));
 const AdminRolesView = L(() => import("@/views/admin/roles"));
 const AdminTemplatesView = L(() => import("@/views/admin/templates"));
 const AdminAuditView = L(() => import("@/views/admin/audit"));
-const AdminSettingsView = L(() => import("@/views/admin/settings"));
+const AdminSettingsView = L(() => import("@/views/admin/settings-hub"));
+const FieldDictionaryAdminView = L(() => import("@/views/admin/FieldDictionaryAdmin"));
+const TabBuilderAdminView = L(() => import("@/views/admin/TabBuilder"));
+
+// --- Data Importing and Exporting hub ---
+const DataImportView = L(() => import("@/views/io/import"));
+const DataExportView = L(() => import("@/views/io/export"));
 
 // --- Command Center expansion (v3.0) ---
 const BoardViewsView = L(() => import("@/views/execute/board-views"));
@@ -89,10 +102,12 @@ export function renderView(segments: string[]): { C: ComponentType; key: string 
     case "schedule": return { C: ScheduleView, key };
     case "milestones": return { C: MilestonesView, key };
     case "baselines": return { C: BaselinesView, key };
+    case "tools": return { C: ToolsView, key };
     case "resources": return { C: ResourcesView, key };
     case "timesheets": return { C: TimesheetsView, key };
     case "inbox": return { C: InboxView, key };
     case "planner": return { C: PlannerView, key };
+    case "priorities": return { C: PrioritiesView, key };
     case "financials": return { C: FinancialsView, key };
     case "evm": return { C: EvmView, key };
     case "health": return { C: HealthView, key };
@@ -106,14 +121,20 @@ export function renderView(segments: string[]): { C: ComponentType; key: string 
     case "reporting": return { C: ReportingCenterView, key };
     case "investment": return { C: InvestmentView, key };
     case "admin-center": return { C: AdminView, key };
+    case "data":
+      return b === "export" ? { C: DataExportView, key } : { C: DataImportView, key };
     case "reports":
       switch (b) {
         case "leadership": return { C: LeadershipView, key };
         default: return { C: ReportsView, key };
       }
     case "analytics": return { C: AnalyticsView, key };
+    case "insights": return b === "report" ? { C: InsightsReportView, key } : { C: InsightsHubView, key };
     case "assistant": return { C: AssistantView, key };
+    case "ai": return { C: AiHubView, key };
+    case "ai-features": return { C: AiFeaturesView, key };
     case "integrations": return { C: IntegrationsView, key };
+    case "hub": return { C: HubView, key };
     case "automations": return { C: AutomationsView, key };
     case "notifications": return { C: NotificationsView, key };
     case "webhooks": return { C: WebhooksView, key };
@@ -134,6 +155,8 @@ export function renderView(segments: string[]): { C: ComponentType; key: string 
         case "templates": return { C: AdminTemplatesView, key };
         case "audit": return { C: AdminAuditView, key };
         case "settings": return { C: AdminSettingsView, key };
+        case "fields": return { C: FieldDictionaryAdminView, key };
+        case "tabs": return { C: TabBuilderAdminView, key };
         default: return { C: AdminUsersView, key };
       }
     default: return { C: Dashboard, key };

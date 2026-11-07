@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 import { writeAudit } from "@/lib/audit";
 import { emitRealtime, projectRoom } from "@/lib/realtime";
+import { recalcProjectHealth } from "@/lib/engines/health";
 
 const patchSchema = z.object({
   status: z.enum(["ACKNOWLEDGED", "RESOLVED", "DISMISSED"]),
@@ -35,6 +36,11 @@ export const PATCH = withApi(async (ctx) => {
   };
 
   const updated = await db.alertEvent.update({ where: { id }, data });
+
+  // Health counts NEW critical alerts — acknowledging/resolving moves that count.
+  if (updated.projectId && alert.status !== updated.status) {
+    await recalcProjectHealth(updated.projectId, `ALERT_${updated.status}`);
+  }
 
   await writeAudit({
     userId: session.id, userName: session.name, role: session.roles[0],

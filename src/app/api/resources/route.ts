@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 import { writeAudit } from "@/lib/audit";
 import { round2, safeDiv } from "@/lib/constants";
+import { isAvatarUrl } from "@/lib/avatars";
 
 const WEEK_MS = 7 * 86_400_000;
 
@@ -41,6 +42,12 @@ export const GET = withApi(async (ctx) => {
     db.resource.findMany({ select: { department: true }, distinct: ["department"] }),
   ]);
 
+  const linkedIds = resources.map((r) => r.userId).filter((id): id is string => Boolean(id));
+  const linkedUsers = linkedIds.length
+    ? await db.user.findMany({ where: { id: { in: linkedIds } }, select: { id: true, avatarUrl: true } })
+    : [];
+  const avatarByUser = new Map(linkedUsers.map((u) => [u.id, u.avatarUrl]));
+
   const resourcesOut = resources.map((r) => {
     // Weekly-equivalent load: spread each active assignment's plannedHours across its window
     let assignedWeeklyHours = 0;
@@ -72,6 +79,8 @@ export const GET = withApi(async (ctx) => {
       managerName: r.managerName,
       isActive: r.isActive,
       userId: r.userId,
+      // Avatar precedence: resource's own pick → linked account avatar → null (generated fallback).
+      avatarUrl: r.avatarUrl ?? (r.userId ? avatarByUser.get(r.userId) ?? null : null),
       activeAssignments: r.assignments.length,
       projectCount: new Set(r.assignments.map((a) => a.projectId)).size,
       totalTimesheets: r._count.timesheets,
@@ -111,6 +120,8 @@ const createSchema = z.object({
   location: z.string().optional().nullable(),
   managerName: z.string().optional().nullable(),
   userId: z.string().optional().nullable(),
+  // Same whitelist discipline as the User row: only the 80 bundled avatars.
+  avatarUrl: z.string().refine(isAvatarUrl, "Invalid avatar").nullable().optional(),
 });
 
 export const POST = withApi(async (ctx) => {
@@ -154,6 +165,7 @@ export const POST = withApi(async (ctx) => {
       availabilityStatus: body.availabilityStatus,
       location: body.location ?? null,
       managerName: body.managerName ?? null,
+      avatarUrl: body.avatarUrl ?? null,
       userId: effectiveUserId,
     },
   });

@@ -2,11 +2,18 @@
 // PM CONTROL TOWER — PROJECT WORKSPACE (flagship view)
 // Route #/projects/[id]. Header bundle loads once; each tab fetches its own endpoint lazily.
 
-import { useApi, useRealtimeRefetch } from "@/lib/client";
+import { useState } from "react";
+import { toast } from "sonner";
+import { api, useApi, useRealtimeRefetch } from "@/lib/client";
 import { useRoute } from "@/lib/router";
-import { PageHeader, LoadingBlock, ErrorBlock, StatusChip, RagBadge, ProgressBar, Metric } from "@/components/pmct/kit";
+import { PageHeader, LoadingBlock, ErrorBlock, StatusChip, RagBadge, ProgressBar, Metric, SectionCard } from "@/components/pmct/kit";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { money, num, fmtDate } from "@/lib/constants";
+import {
+  ProjectFormFields, emptyProjectForm, projectFormFrom, projectPatchPayload, type ProjectFormState,
+} from "@/components/pmct/project-form";
 import type { ProjectDetailBundle } from "./tabs/types";
 import OverviewTab from "./tabs/OverviewTab";
 import ControlsTab from "./tabs/ControlsTab";
@@ -22,7 +29,9 @@ import WbsTree from "@/views/plan/shared/WbsTree";
 import GanttChart from "@/views/plan/shared/GanttChart";
 import MilestonesPanel from "@/views/plan/shared/MilestonesPanel";
 import BaselinesPanel from "@/views/plan/shared/BaselinesPanel";
-import { Building2, Layers, User, CalendarRange } from "lucide-react";
+import { Building2, Layers, User, CalendarRange, Pencil } from "lucide-react";
+import DynamicFormRenderer from "@/components/pmct/DynamicFormRenderer";
+import type { HydratedTab } from "@/lib/engines/custom-fields";
 
 const TABS = [
   { value: "overview", label: "Overview" },
@@ -46,6 +55,17 @@ export default function ProjectWorkspace() {
   const projectId = route.segments[1] || null;
   const bundle = useApi<ProjectDetailBundle>(projectId ? `/api/projects/${projectId}` : null);
   useRealtimeRefetch(bundle.refetch, ["project:updated", "project:health", "project:created"]);
+  // Dynamic Field Configuration Engine — admin-configured tabs (empty when none exist)
+  const customTabs = useApi<{ tabs: HydratedTab[] }>(projectId ? "/api/tabs" : null);
+  const customTabList = customTabs.data?.tabs ?? [];
+
+  // Edit project dialog — same field set as the register's New project form
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState<ProjectFormState>(emptyProjectForm);
+  const [saving, setSaving] = useState(false);
+  const users = useApi<{ users: { id: string; name: string; isActive?: boolean }[] }>(editOpen ? "/api/admin/users" : null);
+  const programs = useApi<{ id: string; code: string; name: string }[]>(editOpen ? "/api/programs" : null);
+  const portfolios = useApi<{ id: string; code: string; name: string }[]>(editOpen ? "/api/portfolios" : null);
 
   if (!projectId) {
     return <ErrorBlock message="No project selected — open a project from the register." />;
@@ -62,6 +82,22 @@ export default function ProjectWorkspace() {
   const { project: p, program, portfolio, owner } = bundle.data;
   const evm = bundle.data.latestEvmPeriod;
 
+  const openEdit = () => { setEditForm(projectFormFrom(p)); setEditOpen(true); };
+  const saveEdit = async () => {
+    if (editForm.name.trim().length < 2) { toast.error("Name must be at least 2 characters"); return; }
+    setSaving(true);
+    try {
+      await api.patch(`/api/projects/${projectId}`, projectPatchPayload(editForm));
+      toast.success("Project updated");
+      setEditOpen(false);
+      await bundle.refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Update failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -77,6 +113,9 @@ export default function ProjectWorkspace() {
           subtitle={p.description || undefined}
           actions={
             <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" className="h-8" onClick={openEdit}>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit project
+              </Button>
               <StatusChip status={p.status} />
               <StatusChip status={p.phase} />
               <StatusChip status={p.priority} />
@@ -124,6 +163,15 @@ export default function ProjectWorkspace() {
                 {t.label}
               </TabsTrigger>
             ))}
+            {customTabList.map((ct) => (
+              <TabsTrigger
+                key={ct.id}
+                value={`custom-${ct.id}`}
+                className="px-3 h-7 text-xs font-medium rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm whitespace-nowrap"
+              >
+                {ct.name}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </div>
 
@@ -141,7 +189,39 @@ export default function ProjectWorkspace() {
         <TabsContent value="changes"><ChangesTab projectId={projectId} /></TabsContent>
         <TabsContent value="gates"><GatesTab projectId={projectId} /></TabsContent>
         <TabsContent value="audit"><AuditTab projectId={projectId} /></TabsContent>
+        {/* Dynamic Field Configuration Engine — admin-defined tabs */}
+        {customTabList.map((ct) => (
+          <TabsContent key={ct.id} value={`custom-${ct.id}`}>
+            <SectionCard
+              title={ct.name}
+              description={ct.description || "Custom fields for this project — saved as structured JSON on the project record"}
+            >
+              <DynamicFormRenderer
+                tab={ct}
+                projectId={projectId}
+                customData={p.customData}
+                onSaved={bundle.refetch}
+              />
+            </SectionCard>
+          </TabsContent>
+        ))}
       </Tabs>
+
+      {/* Edit project — same field set as New project and the Overview details card */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Edit project — {p.code}</DialogTitle></DialogHeader>
+          <ProjectFormFields
+            form={editForm}
+            setForm={setEditForm}
+            meta={{ programs: programs.data || [], portfolios: portfolios.data || [], users: users.data?.users || [] }}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={saving}>{saving ? "Saving…" : "Save changes"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

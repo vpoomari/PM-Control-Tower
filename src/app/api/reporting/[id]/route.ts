@@ -45,7 +45,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   return ok({
     id: r.id, templateName: r.templateName, category: r.category, period: r.period,
-    generatedBy: r.generatedBy, generatedAt: r.createdAt, narrative: r.narrative,
+    generatedBy: r.generatedBy, generatedAt: r.createdAt, createdAt: r.createdAt, narrative: r.narrative,
     data,
   });
 }

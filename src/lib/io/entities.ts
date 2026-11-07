@@ -24,5 +24,5 @@ export function getEntity(key: string): EntityDef | null {
 }
 
 export type { EntityDef } from "./shared";
-export { runImport, IMPORT_MAX_ROWS } from "./shared";
+export { runImport, runImportBatch, IMPORT_MAX_ROWS } from "./shared";
 export type { RowResult } from "./shared";

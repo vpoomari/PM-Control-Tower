@@ -7,8 +7,9 @@ import { db } from "@/lib/db";
 import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 import { writeAudit } from "@/lib/audit";
 import { emitRealtime, projectRoom } from "@/lib/realtime";
+import { fireAutomations } from "@/lib/engines/automations";
 
-const ASSUMPTION_STATUSES = ["VALID", "AT_RISK", "INVALID", "CLOSED"] as const;
+const ASSUMPTION_STATUSES = ["TO_VALIDATE", "VALID", "AT_RISK", "INVALID", "CLOSED"] as const;
 
 async function nextAssumptionCode(): Promise<string> {
   const count = await db.assumption.count();
@@ -44,6 +45,7 @@ export const GET = withApi(async (ctx) => {
     assumptions,
     total: assumptions.length,
     summary: {
+      toValidate: assumptions.filter((a) => a.status === "TO_VALIDATE").length,
       valid: assumptions.filter((a) => a.status === "VALID").length,
       atRisk: assumptions.filter((a) => a.status === "AT_RISK").length,
       invalid: assumptions.filter((a) => a.status === "INVALID").length,
@@ -90,5 +92,10 @@ export const POST = withApi(async (ctx) => {
     after: { status: "VALID" }, ipAddress: ctx.ip,
   });
   emitRealtime("raid:changed", { projectId: body.projectId, type: "assumption", assumptionId: created.id, code, action: "CREATED" }, projectRoom(body.projectId));
+  // Assumptions are RAID members → RAID_CREATED rules react too (risk/issue already fire it).
+  fireAutomations("RAID_CREATED", {
+    entityType: "Assumption", entityId: created.id, projectId: body.projectId,
+    code, status: "VALID", category: "ASSUMPTION",
+  });
   return ok({ assumption: created }, 201);
 }, { permission: "raid.manage", rateLimit: { limit: 120, windowMs: 60_000 } });

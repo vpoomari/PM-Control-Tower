@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 import { writeAudit } from "@/lib/audit";
 import { emitRealtime, projectRoom } from "@/lib/realtime";
+import { recalcProjectHealth } from "@/lib/engines/health";
 import {  PROJECT_STATUS, PRIORITY  } from "@/lib/constants";
 
 const projectCreateSchema = z.object({
@@ -24,6 +25,7 @@ const projectCreateSchema = z.object({
   phase: z.string().optional(),
   methodology: z.string().optional(),
   riskLevel: z.string().optional(),
+  billingType: z.string().optional(),
   currency: z.string().trim().length(3).optional(),
   startDate: z.coerce.date().optional().nullable(),
   endDate: z.coerce.date().optional().nullable(),
@@ -31,9 +33,11 @@ const projectCreateSchema = z.object({
   baselineFinish: z.coerce.date().optional().nullable(),
   currentBudget: z.coerce.number().min(0).optional(),
   baselineBudget: z.coerce.number().min(0).optional(),
+  forecastCost: z.coerce.number().min(0).optional(),
   charter: z.string().optional().nullable(),
   objectives: z.string().optional().nullable(),
   successCriteria: z.string().optional().nullable(),
+  statusDate: z.coerce.date().optional().nullable(),
 });
 
 export const GET = withApi(async (ctx) => {
@@ -70,7 +74,7 @@ export const GET = withApi(async (ctx) => {
       include: {
         program: { select: { id: true, code: true, name: true, portfolio: { select: { id: true, code: true, name: true } } } },
         portfolio: { select: { id: true, code: true, name: true } },
-        owner: { select: { id: true, name: true, avatarColor: true } },
+        owner: { select: { id: true, name: true, avatarColor: true, avatarUrl: true } },
       },
     }),
     db.project.count({ where }),
@@ -129,12 +133,15 @@ export const POST = withApi(async (ctx) => {
       methodology: body.methodology ?? "HYBRID",
       riskLevel: body.riskLevel ?? "MEDIUM",
       currency: body.currency ?? "USD",
+      statusDate: body.statusDate ?? null,
       startDate: body.startDate ?? null,
       endDate: body.endDate ?? null,
       baselineStart: body.baselineStart ?? body.startDate ?? null,
       baselineFinish: body.baselineFinish ?? body.endDate ?? null,
       currentBudget: body.currentBudget ?? 0,
       baselineBudget: body.baselineBudget ?? body.currentBudget ?? 0,
+      forecastCost: body.forecastCost ?? 0,
+      billingType: body.billingType ?? "BILLABLE",
       charter: body.charter ?? null,
       objectives: body.objectives ?? null,
       successCriteria: body.successCriteria ?? null,
@@ -151,6 +158,9 @@ export const POST = withApi(async (ctx) => {
     action: "CREATE", entityType: "Project", entityId: project.id, entityName: project.name,
     after: project, ipAddress: ctx.ip,
   });
+  // Initial health snapshot + rollup so a brand-new project shows a live RAG
+  // immediately (was: no score until the first unrelated recalculation).
+  await recalcProjectHealth(project.id, "PROJECT_CREATE");
   emitRealtime("project:created", { projectId: project.id, code: project.code, name: project.name }, projectRoom(project.id));
 
   return ok(project, 201);

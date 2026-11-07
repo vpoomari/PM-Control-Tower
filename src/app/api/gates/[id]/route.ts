@@ -101,6 +101,7 @@ export const PATCH = withApi(async (ctx) => {
       ipAddress: ctx.ip,
     });
     emitRealtime("governance:changed", { gateId: updated.id, projectId: updated.projectId, decisionStatus: updated.decisionStatus }, projectRoom(updated.projectId));
+    emitRealtime("gate:changed", { projectId: updated.projectId, gateId: updated.id, decisionStatus: updated.decisionStatus }, projectRoom(updated.projectId)); // GatesTab listens for this name
   } else if (Object.keys(data).length > 0) {
     await writeAudit({
       userId: session.id, userName: session.name, role: session.roles[0],

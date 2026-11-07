@@ -19,6 +19,19 @@ interface TriggerContext {
   [k: string]: unknown;
 }
 
+/** Re-entrancy guard: while one automation run is executing, entity cascades it
+ *  triggers (RECALC_HEALTH → HEALTH_CHANGED, RECALC_CPM → SCHEDULE_CHANGED) must
+ *  not re-enter the engine, otherwise a rule can loop forever. */
+let automationDepth = 0;
+
+/** Fire-and-forget cascade entry point for entity engines (health, rollup, routes).
+ *  No-ops while an automation run is already in flight (depth guard) and never
+ *  throws — automations must never break the business mutation that emitted them. */
+export function fireAutomations(triggerType: string, ctx: TriggerContext = {}): void {
+  if (automationDepth > 0) return;
+  void runAutomations(triggerType, ctx).catch(() => undefined);
+}
+
 interface Condition { field: string; op: string; value: unknown }
 interface Action { type: string; params?: Record<string, unknown> }
 
@@ -139,8 +152,15 @@ function actionIsNotifyPm(params: Record<string, unknown> | undefined): boolean 
 }
 
 /** Entry point: run all active automation rules for a trigger type. When onlyRuleId is
- *  provided, execution is restricted to that single rule (manual run endpoint). */
-export async function runAutomations(triggerType: string, ctx: TriggerContext = {}, onlyRuleId?: string): Promise<void> {
+ *  provided, execution is restricted to that single rule (manual run endpoint).
+ *  opts.bypassConditions — manual "Run now" executes actions regardless of rule
+ *  conditions (a synthetic context can never satisfy entity conditions). */
+export async function runAutomations(
+  triggerType: string,
+  ctx: TriggerContext = {},
+  onlyRuleId?: string,
+  opts?: { bypassConditions?: boolean },
+): Promise<void> {
   let rules;
   try {
     rules = await db.automationRule.findMany({ where: { isActive: true, triggerType } });
@@ -148,6 +168,8 @@ export async function runAutomations(triggerType: string, ctx: TriggerContext = 
     return; // DB not ready — never block the business flow
   }
   if (onlyRuleId) rules = rules.filter((r) => r.id === onlyRuleId);
+  automationDepth += 1;
+  try {
   for (const rule of rules) {
     const started = Date.now();
     let attempts = 0;
@@ -158,7 +180,7 @@ export async function runAutomations(triggerType: string, ctx: TriggerContext = 
 
     try {
       const conditions = fromJson<Condition[]>(rule.conditionsJson, []);
-      const conditionsMet = conditions.every((c) => matchCondition(c, ctx));
+      const conditionsMet = opts?.bypassConditions || conditions.every((c) => matchCondition(c, ctx));
       if (!conditionsMet) {
         await db.automationExecution.create({
           data: { ruleId: rule.id, projectId: (ctx.projectId as string) || null, status: "SKIPPED", triggeredBy: "SYSTEM", entityType: (ctx.entityType as string) || null, entityId: (ctx.entityId as string) || null, inputJson: toJson(ctx), outputJson: toJson({ reason: "conditions not met" }), durationMs: Date.now() - started },
@@ -195,5 +217,8 @@ export async function runAutomations(triggerType: string, ctx: TriggerContext = 
     });
     emitRealtime("automation:executed", { rule: rule.name, status, durationMs: Date.now() - started });
     await writeAudit({ action: "EXECUTE", entityType: "AutomationRule", entityId: rule.id, entityName: rule.name, after: { status, output }, severity: status === "FAILED" ? "WARNING" : "INFO", context: `Trigger: ${triggerType}` });
+  }
+  } finally {
+    automationDepth = Math.max(0, automationDepth - 1);
   }
 }

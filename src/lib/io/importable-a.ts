@@ -52,7 +52,7 @@ export const portfolios: EntityDef = {
       name,
       description: toStr(row.Description),
       status: toStr(row.Status) ?? "ACTIVE",
-      ownerId: owner?.id ?? null,
+      ownerId: "Owner Email" in row ? (owner?.id ?? null) : undefined,
       strategicObjective: toStr(row["Strategic Objective"]),
       budgetTarget: toNum(row["Budget Target"], 0),
       forecastCost: toNum(row["Forecast Cost"], 0),
@@ -115,7 +115,7 @@ export const programs: EntityDef = {
     const owner = await userByEmail(tx, toStr(row["Owner Email"]));
     const data = {
       name, description: toStr(row.Description), portfolioId: portfolio.id,
-      ownerId: owner?.id ?? null, status: toStr(row.Status) ?? "ACTIVE",
+      ownerId: "Owner Email" in row ? (owner?.id ?? null) : undefined, status: toStr(row.Status) ?? "ACTIVE",
       budget: toNum(row.Budget, 0), forecastCost: toNum(row["Forecast Cost"], 0),
       ragStatus: toStr(row["RAG Status"]) ?? "GREEN",
       startDate: toDate(row["Start Date"]), endDate: toDate(row["End Date"]),
@@ -194,7 +194,9 @@ export const projects: EntityDef = {
     const owner = await userByEmail(tx, toStr(row["Owner Email"]));
     const data = {
       name, description: toStr(row.Description),
-      portfolioId: portfolio?.id ?? null, programId: program?.id ?? null, ownerId: owner?.id ?? null,
+      portfolioId: "Portfolio Code" in row ? (portfolio?.id ?? null) : undefined,
+      programId: "Program Code" in row ? (program?.id ?? null) : undefined,
+      ownerId: "Owner Email" in row ? (owner?.id ?? null) : undefined,
       status: toStr(row.Status) ?? undefined, priority: toStr(row.Priority) ?? undefined,
       phase: toStr(row.Phase) ?? undefined, methodology: toStr(row.Methodology) ?? undefined,
       riskLevel: toStr(row["Risk Level"]) ?? undefined, billingType: toStr(row["Billing Type"]) ?? undefined,
@@ -339,8 +341,9 @@ export const tasks: EntityDef = {
       parentId = parent.id;
     }
     const data = {
-      name, description: toStr(row.Description), parentId,
-      assigneeId: assignee?.id ?? null,
+      name, description: toStr(row.Description),
+      parentId: parentCode ? parentId : ("Parent Code" in row ? null : undefined),
+      assigneeId: "Assignee Email" in row ? (assignee?.id ?? null) : undefined,
       status: toStr(row.Status) ?? undefined, priority: toStr(row.Priority) ?? undefined,
       criticality: toStr(row.Criticality) ?? undefined,
       startDate: toDate(row["Start Date"]), endDate: toDate(row["End Date"]),

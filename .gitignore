@@ -13,6 +13,21 @@ dist/
 # Generated PostgreSQL schema variant (see scripts/prepare-vercel.mjs)
 prisma/schema.vercel.prisma
 
+# Alternate Next build caches — must stay ignored: Tailwind v4 automatic source
+# detection scans everything not gitignored, and binary files inside these
+# (Turbopack SST chunks) corrupt generated utility classes → CSS parse errors.
+.next-brand-*/
+
+# Local artifacts (binaries, screenshots, scratch logs — never scanned for classes)
+.zscripts/
+.zwork/
+backups/
+_backups/
+db/*.db
+tool-results/
+gui-test-screenshots/
+download/
+
 # Logs & caches
 *.log
 dev.log

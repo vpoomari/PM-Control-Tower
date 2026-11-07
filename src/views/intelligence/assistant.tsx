@@ -4,11 +4,12 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api, useApi } from "@/lib/client";
+import { useRoute } from "@/lib/router";
 import {
   PageHeader, SectionCard, Button, Badge, LoadingBlock, ErrorBlock, cn,
 } from "@/components/pmct/kit";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Sparkles, ShieldCheck, Bot, User as UserIcon, RotateCcw, BrainCircuit } from "lucide-react";
+import { Send, Sparkles, ShieldCheck, Bot, User as UserIcon, RotateCcw, BrainCircuit, Settings } from "lucide-react";
 
 interface AiExecution {
   id: string;
@@ -52,6 +53,17 @@ export default function AssistantView() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { navigate } = useRoute();
+
+  // Configuration guidance: only admins can act on it, so only they see the CTA.
+  const session = useApi<{ user: { isSuperAdmin: boolean; permissions: string[] } }>("/api/auth/me");
+  const canConfigure = Boolean(
+    session.data?.user &&
+      (session.data.user.isSuperAdmin ||
+        session.data.user.permissions.includes("admin.config") ||
+        session.data.user.permissions.includes("*"))
+  );
+  const needsConfig = messages.some((m) => m.error && /AI provider|connector configured/i.test(m.text));
 
   useEffect(() => {
     let alive = true;
@@ -108,7 +120,10 @@ export default function AssistantView() {
       }]);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "The assistant is unavailable";
-      const friendly = /502|failed|timeout/i.test(msg)
+      // Configuration/permission guidance is already actionable — show it
+      // verbatim. Only generic transport failures get the friendly rewording.
+      const actionable = /AI provider|connector|not configured|API key|permission ai\.use/i.test(msg);
+      const friendly = !actionable && /502|failed|timeout/i.test(msg)
         ? "The Insight Engine could not complete this request. It may be busy or the model endpoint is unreachable — please try again."
         : msg;
       setMessages((m) => [...m, { id: `e-${Date.now()}`, role: "assistant", text: friendly, error: true }]);
@@ -145,6 +160,23 @@ export default function AssistantView() {
               <RotateCcw className="h-3.5 w-3.5 mr-1" /> Clear view
             </Button>
           </div>
+
+          {/* Not-configured notice — admin shortcut straight to the AI provider panel */}
+          {needsConfig && canConfigure && (
+            <div className="mx-4 mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+              <p className="text-xs text-amber-800">
+                AI is not configured yet — save a provider API key to enable the assistant.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs border-amber-300 bg-white text-amber-800 hover:bg-amber-100"
+                onClick={() => navigate("/admin/settings")}
+              >
+                <Settings className="h-3.5 w-3.5 mr-1" /> Open AI settings
+              </Button>
+            </div>
+          )}
 
           {/* Messages */}
               <div ref={scrollRef} className="flex-1 min-h-[420px] max-h-[560px] overflow-y-auto p-4 space-y-4">

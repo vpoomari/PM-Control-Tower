@@ -9,6 +9,9 @@ import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 import { writeAudit } from "@/lib/audit";
 import { emitRealtime, projectRoom } from "@/lib/realtime";
 import { PROJECT_STATUS, PRIORITY } from "@/lib/constants";
+import { parseCustomData, validateCustomData, deepMerge, type CustomData } from "@/lib/engines/custom-fields";
+import { recalcProjectHealth } from "@/lib/engines/health";
+import { fireAutomations } from "@/lib/engines/automations";
 
 const projectUpdateSchema = z.object({
   name: z.string().trim().min(2).max(160).optional(),
@@ -36,6 +39,9 @@ const projectUpdateSchema = z.object({
   objectives: z.string().optional().nullable(),
   successCriteria: z.string().optional().nullable(),
   statusDate: z.coerce.date().optional().nullable(),
+  // Dynamic Field Configuration Engine — partial payload, deep-merged into
+  // the existing JSON so updating one tab never clobbers other tabs' keys.
+  customData: z.record(z.string(), z.unknown()).optional(),
 });
 
 interface WbsTreeNode {
@@ -64,7 +70,7 @@ export const GET = withApi(async (ctx) => {
     include: {
       program: { include: { portfolio: { select: { id: true, code: true, name: true } } } },
       portfolio: { select: { id: true, code: true, name: true } },
-      owner: { select: { id: true, name: true, email: true, title: true, avatarColor: true } },
+      owner: { select: { id: true, name: true, email: true, title: true, avatarColor: true, avatarUrl: true } },
     },
   });
   if (!project) throw new ApiError(404, "Project not found");
@@ -74,7 +80,7 @@ export const GET = withApi(async (ctx) => {
     db.task.findMany({
       where: { projectId: id },
       orderBy: [{ code: "asc" }],
-      include: { wbs: { select: { id: true, code: true, name: true } }, assignee: { select: { id: true, name: true, avatarColor: true } } },
+      include: { wbs: { select: { id: true, code: true, name: true } }, assignee: { select: { id: true, name: true, avatarColor: true, avatarUrl: true } } },
     }),
     db.dependency.findMany({
       where: { projectId: id },
@@ -157,23 +163,69 @@ export const PATCH = withApi(async (ctx) => {
   if (!before) throw new ApiError(404, "Project not found");
 
   const body = await parseBody(ctx.req, projectUpdateSchema);
+  const { customData: customDataPatch, ...scalarBody } = body;
 
-  if (body.programId !== undefined && body.programId) {
-    const program = await db.program.findUnique({ where: { id: body.programId }, select: { id: true, portfolioId: true } });
+  if (scalarBody.programId !== undefined && scalarBody.programId) {
+    const program = await db.program.findUnique({ where: { id: scalarBody.programId }, select: { id: true, portfolioId: true } });
     if (!program) throw new ApiError(400, "Program not found");
   }
-  if (body.portfolioId) {
-    const portfolio = await db.portfolio.findUnique({ where: { id: body.portfolioId }, select: { id: true } });
+  if (scalarBody.portfolioId) {
+    const portfolio = await db.portfolio.findUnique({ where: { id: scalarBody.portfolioId }, select: { id: true } });
     if (!portfolio) throw new ApiError(400, "Portfolio not found");
   }
-  for (const uid of [body.ownerId, body.managerId, body.sponsorId]) {
+  for (const uid of [scalarBody.ownerId, scalarBody.managerId, scalarBody.sponsorId]) {
     if (uid) {
       const u = await db.user.findUnique({ where: { id: uid }, select: { id: true } });
       if (!u) throw new ApiError(400, "Referenced user not found");
     }
   }
 
-  const project = await db.project.update({ where: { id }, data: body });
+  // ---- Dynamic Field Configuration Engine: validate + deep-merge customData ----
+  let mergedCustomData: CustomData | undefined;
+  if (customDataPatch !== undefined) {
+    const keys = Object.keys(customDataPatch);
+    const defs = keys.length
+      ? await db.customFieldDefinition.findMany({ where: { fieldKey: { in: keys } } })
+      : [];
+    // required flags for the SUBMITTED keys only — saving one tab must not fail
+    // because an unrelated tab's required field is still empty
+    const requiredRows = keys.length
+      ? await db.tabFieldMapping.findMany({
+          where: { isRequired: true, field: { fieldKey: { in: keys } } },
+          include: { field: { select: { fieldKey: true } } },
+        })
+      : [];
+    const requiredKeys = new Set(requiredRows.map((r) => r.field.fieldKey));
+
+    const { values, errors } = validateCustomData(defs, customDataPatch, { requiredKeys });
+
+    // USER_LOOKUP values must reference real, active users
+    const lookupIds = [...new Set(Object.entries(values)
+      .filter(([k]) => defs.find((d) => d.fieldKey === k)?.dataType === "USER_LOOKUP")
+      .map(([, v]) => v)
+      .filter((v): v is string => typeof v === "string" && v.length > 0))];
+    if (lookupIds.length) {
+      const users = await db.user.findMany({ where: { id: { in: lookupIds }, isActive: true }, select: { id: true } });
+      const found = new Set(users.map((u) => u.id));
+      for (const uid of lookupIds) {
+        if (!found.has(uid)) errors.push(`Referenced user ${uid} not found or inactive`);
+      }
+    }
+
+    if (errors.length) throw new ApiError(400, `Invalid custom data: ${errors.join("; ")}`);
+
+    // deep merge — existing keys (other tabs' fields) survive a partial update
+    const existing = parseCustomData(before.customData);
+    mergedCustomData = deepMerge(existing, values);
+  }
+
+  const project = await db.project.update({
+    where: { id },
+    data: {
+      ...scalarBody,
+      ...(mergedCustomData !== undefined ? { customData: mergedCustomData } : {}),
+    },
+  });
 
   await writeAudit({
     userId: ctx.session?.id, userName: ctx.session?.name, role: ctx.session?.roles[0],
@@ -189,6 +241,29 @@ export const PATCH = withApi(async (ctx) => {
       ipAddress: ctx.ip, severity: body.status === "CANCELLED" ? "WARNING" : "INFO",
     });
   }
+
+  // Cross-entity cascades: budget/status/statusDate feed health + EVM; dates feed CPM.
+  const healthRelevant =
+    body.currentBudget !== undefined || body.baselineBudget !== undefined ||
+    body.forecastCost !== undefined || body.statusDate !== undefined ||
+    (body.status !== undefined && body.status !== before.status);
+  if (healthRelevant) await recalcProjectHealth(id, "PROJECT_UPDATE");
+  if (body.status !== undefined && body.status !== before.status) {
+    fireAutomations("STATUS_CHANGED", {
+      entityType: "Project", entityId: id, projectId: id, code: project.code, name: project.name,
+      status: project.status, previousStatus: before.status, priority: project.priority,
+    });
+  }
+  const datesChanged =
+    (body.startDate !== undefined && body.startDate?.getTime() !== before.startDate?.getTime()) ||
+    (body.endDate !== undefined && body.endDate?.getTime() !== before.endDate?.getTime());
+  if (datesChanged) {
+    fireAutomations("SCHEDULE_CHANGED", {
+      entityType: "Project", entityId: id, projectId: id, code: project.code,
+      startDate: project.startDate, endDate: project.endDate, source: "PROJECT_UPDATE",
+    });
+  }
+
   emitRealtime("project:updated", { projectId: id, status: project.status, ragStatus: project.ragStatus }, projectRoom(id));
 
   return ok(project);

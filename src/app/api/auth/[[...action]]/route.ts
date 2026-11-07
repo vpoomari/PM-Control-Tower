@@ -8,9 +8,11 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { withApi, ok, fail, ApiError, parseBody } from "@/lib/api";
 import { verifyPassword, signToken, getSessionUser, hashPassword, AUTH_COOKIE } from "@/lib/auth";
+import { isAvatarUrl } from "@/lib/avatars";
 import { writeAudit } from "@/lib/audit";
 
 const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1) });
+const avatarSchema = z.object({ avatarUrl: z.string().nullable() });
 
 export const POST = async (req: Request): Promise<Response> => {
   const url = new URL(req.url);
@@ -71,6 +73,32 @@ export const POST = async (req: Request): Promise<Response> => {
   }
 
   return fail(404, "Unknown auth action");
+};
+
+// PATCH /api/auth/me — self-service profile update (avatar selection).
+// Only whitelisted bundled avatar paths (or null to revert to initials) are accepted.
+export const PATCH = async (req: Request): Promise<Response> => {
+  return withApi(async (ctx) => {
+    if (!ctx.session) throw new ApiError(401, "Authentication required");
+    const action = new URL(ctx.req.url).pathname.split("/").filter(Boolean).pop();
+    if (action !== "me") return fail(404, "Unknown auth action");
+    const body = await parseBody(ctx.req, avatarSchema);
+    const url = body.avatarUrl;
+    if (url !== null && !isAvatarUrl(url)) {
+      throw new ApiError(400, "Choose an avatar from the available set");
+    }
+    const updated = await db.user.update({
+      where: { id: ctx.session.id },
+      data: { avatarUrl: url },
+      select: { id: true, avatarUrl: true },
+    });
+    await writeAudit({
+      userId: ctx.session.id, userName: ctx.session.name, role: ctx.session.roles[0],
+      action: "UPDATE", entityType: "User", entityId: updated.id, entityName: ctx.session.name,
+      after: { avatarUrl: updated.avatarUrl }, ipAddress: ctx.ip,
+    });
+    return ok({ avatarUrl: updated.avatarUrl });
+  }, { rateLimit: { limit: 40, windowMs: 60_000 } })(req);
 };
 
 export const GET = async (req: Request): Promise<Response> => {

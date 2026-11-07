@@ -23,7 +23,7 @@ export const GET = withApi(async () => {
       orderBy: { createdAt: "asc" },
       select: {
         id: true, email: true, name: true, title: true, department: true,
-        avatarColor: true, isActive: true, isSuperAdmin: true, lastLoginAt: true, createdAt: true,
+        avatarColor: true, avatarUrl: true, isActive: true, isSuperAdmin: true, lastLoginAt: true, createdAt: true,
         userRoles: { select: { role: { select: { id: true, code: true, name: true, level: true } } } },
         _count: { select: { auditEvents: true, notifications: true, ownedProjects: true, assignedTasks: true } },
       },

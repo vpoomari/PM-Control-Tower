@@ -128,6 +128,8 @@ export function scenarioSuite(input: BusinessCaseInput): { name: string; metrics
 }
 
 // ---- NPV sensitivity to benefits ±30% ----
+// computeBusinessCase always yields a finite numeric NPV (flows discount to a real sum),
+// so the `?? 0` fallback is unreachable for sane inputs — kept for type-honesty.
 export function npvSensitivity(input: BusinessCaseInput, steps = [-30, -20, -10, 0, 10, 20, 30]): { changePct: number; npv: number }[] {
-  return steps.map((p) => ({ changePct: p, npv: withScenario(input, { benefitMult: 1 + p / 100 }).npv }));
+  return steps.map((p) => ({ changePct: p, npv: withScenario(input, { benefitMult: 1 + p / 100 }).npv ?? 0 }));
 }

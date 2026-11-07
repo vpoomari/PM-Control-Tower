@@ -9,7 +9,11 @@ export const APP_MOTTO = "PLAN | EXECUTE | MONITOR | GOVERN | DELIVER";
 export const PROJECT_STATUS = ["DRAFT", "ACTIVE", "ON_HOLD", "COMPLETED", "CANCELLED"] as const;
 export const PRIORITY = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 export const RAG = ["GREEN", "AMBER", "RED"] as const;
-export const TASK_STATUS = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED", "BLOCKED", "CANCELLED"] as const;
+export const TASK_STATUS = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED", "BLOCKED", "ON_HOLD", "CANCELLED"] as const;
+/** Terminal task statuses — reminders & overdue escalations stop here. */
+export const TASK_TERMINAL_STATUS = ["COMPLETED", "CANCELLED", "ON_HOLD"] as const;
+/** Roles routed to the prioritized task dashboard immediately after login. */
+export const TASK_DASHBOARD_ROLES = ["PMO_ADMIN", "PROJECT_MANAGER"] as const;
 export const DEP_TYPES = ["FS", "SS", "FF", "SF"] as const;
 export const TS_STATUS = ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "APPROVED", "REJECTED", "LOCKED"] as const;
 export const CR_STATUS = ["DRAFT", "SUBMITTED", "ASSESSMENT", "APPROVAL", "APPROVED", "REJECTED", "IMPLEMENTED", "CLOSED"] as const;

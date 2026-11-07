@@ -14,6 +14,10 @@ import {
   AlertTriangle, Scale, Clock, TrendingUp, TrendingDown, ShieldAlert, Database,
   Printer, FileDown, ChevronRight, CircleCheck, Info,
 } from "lucide-react";
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend,
+} from "recharts";
 
 // ================= CONTROL TOWER =================
 const LEVEL_STYLE: Record<string, { cls: string; label: string }> = {
@@ -27,17 +31,19 @@ const LEVEL_STYLE: Record<string, { cls: string; label: string }> = {
 
 export function ExceptionRow({ ex, onDrill }: { ex: ExceptionItem; onDrill?: (projectId: string) => void }) {
   const s = LEVEL_STYLE[ex.level] ?? LEVEL_STYLE.CHANGE;
+  const canDrill = Boolean(ex.projectId);
   return (
     <button
-      className={cn("w-full text-left rounded-lg border px-3.5 py-2.5 flex items-start gap-3 hover:shadow-sm transition-all", s.cls, "bg-opacity-60")}
-      onClick={() => { /* drill-down handled via project link below */ }}
+      className={cn("w-full text-left rounded-lg border px-3.5 py-2.5 flex items-start gap-3 transition-all", s.cls, "bg-opacity-60", canDrill ? "hover:shadow-sm hover:border-blue-300 cursor-pointer" : "cursor-default")}
+      onClick={() => { if (canDrill && ex.projectId) onDrill?.(ex.projectId); }}
+      title={canDrill ? "Open project workspace" : "No linked project — detail shown above"}
     >
       <span className={cn("mt-0.5 rounded border px-1.5 py-0.5 text-[9px] font-bold tracking-wide shrink-0 bg-white/70", s.cls)}>{s.label}</span>
       <span className="min-w-0 flex-1">
         <span className="block text-xs font-semibold">{ex.title}</span>
         <span className="block text-[11px] opacity-80 mt-0.5 leading-relaxed">{ex.detail}</span>
       </span>
-      {ex.projectCode ? <span className="text-[10px] font-mono shrink-0 opacity-70">{ex.projectCode}</span> : null}
+      {ex.projectCode ? <span className="text-[10px] font-mono shrink-0 opacity-70">{ex.projectCode}{canDrill ? " →" : ""}</span> : null}
     </button>
   );
 }
@@ -56,6 +62,71 @@ export function TowerSection({ d, onDrill, onGenerate }: { d: LeadershipBundle; 
         <StatCard label="On Track (GREEN)" value={t.onTrack} tone={t.onTrack >= t.totalProjects / 2 ? "good" : undefined} icon={<CircleCheck className="h-4 w-4" />} />
         <StatCard label="At Risk (AMBER)" value={t.atRisk} tone={t.atRisk ? "warn" : undefined} icon={<AlertTriangle className="h-4 w-4" />} />
         <StatCard label="Critical (RED)" value={t.critical} tone={t.critical ? "bad" : "good"} icon={<ShieldAlert className="h-4 w-4" />} />
+      </div>
+
+      {/* Chart row — visual portfolio intelligence (was: numbers-only) */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <SectionCard title="Portfolio health mix" description="Live RAG classification across all projects">
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: "On track", value: t.onTrack, fill: "#059669" },
+                    { name: "At risk", value: t.atRisk, fill: "#d97706" },
+                    { name: "Critical", value: t.critical, fill: "#dc2626" },
+                    { name: "Insufficient data", value: t.insufficient, fill: "#94a3b8" },
+                  ].filter((x) => x.value > 0)}
+                  dataKey="value" nameKey="name" innerRadius={48} outerRadius={78} paddingAngle={3} strokeWidth={0}
+                >
+                  {[{ f: "#059669" }, { f: "#d97706" }, { f: "#dc2626" }, { f: "#94a3b8" }]
+                    .map((c, i) => <Cell key={i} fill={c.f} />)}
+                </Pie>
+                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                <Legend iconType="circle" iconSize={8} formatter={(v: string) => <span className="text-xs text-slate-600">{v}</span>} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Budget position" description="Approved vs actual vs forecast at portfolio level">
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={[
+                { name: "Approved", value: t.budget.approved, fill: "#94a3b8" },
+                { name: "Actual", value: t.budget.actual, fill: "#2563eb" },
+                { name: "Forecast", value: t.budget.forecast, fill: t.budget.variance > 0 ? "#dc2626" : "#059669" },
+              ]} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${Math.round(v / 1e3)}k`} width={44} />
+                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: number) => money(v)} />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  {[{ fill: "#94a3b8" }, { fill: "#2563eb" }, { fill: t.budget.variance > 0 ? "#dc2626" : "#059669" }].map((c, i) => <Cell key={i} fill={c.fill} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Project delivery performance" description="Top projects by budget — actual burn vs forecast (click a bar's project in Portfolio tab)">
+          <div className="h-48">
+            {d.portfolio.length === 0 ? <EmptyState title="No project data" /> : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={d.portfolio.slice(0, 6).map((p) => ({ name: p.code, actual: p.actualCost, forecast: p.forecastCost, budget: p.budget }))} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${Math.round(v / 1e3)}k`} width={44} />
+                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: number) => money(v)} />
+                  <Legend iconType="circle" iconSize={8} formatter={(v: string) => <span className="text-xs text-slate-600">{v}</span>} />
+                  <Bar dataKey="budget" name="Budget" fill="#cbd5e1" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="actual" name="Actual" fill="#2563eb" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="forecast" name="Forecast" fill="#f59e0b" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </SectionCard>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">

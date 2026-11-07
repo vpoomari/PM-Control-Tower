@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { api, useApi, useRealtimeRefetch } from "@/lib/client";
-import { LoadingBlock, ErrorBlock, SectionCard, StatusChip, EmptyState } from "@/components/pmct/kit";
+import { LoadingBlock, ErrorBlock, SectionCard, StatusChip, EmptyState, cn } from "@/components/pmct/kit";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { money, num, fmtDate } from "@/lib/constants";
@@ -116,8 +116,14 @@ export default function ChangesTab({ projectId }: { projectId: string }) {
               <tbody>
                 {items.map((cr) => {
                   const nexts = TRANSITIONS[cr.status] || [];
+                  const decisionNext = nexts.find((n) => n === "APPROVED" || n === "REJECTED") ?? null;
                   return (
-                    <tr key={cr.id} className="border-b border-slate-100 last:border-0 hover:bg-blue-50/40 align-top">
+                    <tr
+                      key={cr.id}
+                      onDoubleClick={decisionNext ? () => transition(cr, decisionNext) : undefined}
+                      title={decisionNext ? "Double-click to record the approve/reject decision" : "Terminal status — no decision pending"}
+                      className={cn("border-b border-slate-100 last:border-0 hover:bg-blue-50/40 align-top", decisionNext && "cursor-pointer")}
+                    >
                       <td className="px-3 py-3 font-mono text-xs text-slate-500 whitespace-nowrap">{cr.code}</td>
                       <td className="px-3 py-3 max-w-[260px]">
                         <p className="font-medium text-slate-800">{cr.title}</p>
@@ -169,7 +175,7 @@ export default function ChangesTab({ projectId }: { projectId: string }) {
         )}
         <p className="mt-3 flex items-center gap-1.5 text-[11px] text-slate-400">
           <GitPullRequest className="h-3.5 w-3.5" />
-          Workflow: DRAFT → SUBMITTED → ASSESSMENT → APPROVAL → APPROVED/REJECTED → IMPLEMENTED → CLOSED. Decisions (approve/reject) require a governance role and are only taken during ASSESSMENT or APPROVAL.
+          Workflow: DRAFT → SUBMITTED → ASSESSMENT → APPROVAL → APPROVED/REJECTED → IMPLEMENTED → CLOSED. Decisions (approve/reject) require a governance role and are only taken during ASSESSMENT or APPROVAL — double-click a pending row to record one.
         </p>
       </SectionCard>
 

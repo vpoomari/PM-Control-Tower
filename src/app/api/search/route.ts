@@ -1,8 +1,10 @@
 // PM CONTROL TOWER — Global Search API
-// GET /api/search?q= — grouped cross-entity search (projects, programs, portfolios, tasks, risks, issues)
+// GET /api/search?q= — grouped cross-entity search (projects, programs, portfolios,
+// tasks, risks, issues) plus a "custom" group over searchable Field Dictionary values.
 
 import { db } from "@/lib/db";
 import { withApi, ok } from "@/lib/api";
+import { searchCustomValues } from "@/lib/fields/enrich";
 
 export const GET = withApi(async (ctx) => {
   const q = ctx.searchParams.get("q")?.trim() ?? "";
@@ -10,7 +12,7 @@ export const GET = withApi(async (ctx) => {
   if (q.length < 2) {
     return ok({
       query: q,
-      projects: [], programs: [], portfolios: [], tasks: [], risks: [], issues: [],
+      projects: [], programs: [], portfolios: [], tasks: [], risks: [], issues: [], custom: [],
       total: 0,
       hint: "Enter at least 2 characters",
     });
@@ -55,7 +57,15 @@ export const GET = withApi(async (ctx) => {
     }),
   ]);
 
-  const total = projects.length + programs.length + portfolios.length + tasks.length + risks.length + issues.length;
+  // Searchable Field Dictionary values (respecting sensitivity + role gates).
+  const custom = await searchCustomValues(
+    q,
+    ctx.session ? { roles: ctx.session.roles, isSuperAdmin: ctx.session.isSuperAdmin } : null,
+    8,
+  );
 
-  return ok({ query: q, projects, programs, portfolios, tasks, risks, issues, total });
+  const total = projects.length + programs.length + portfolios.length + tasks.length
+    + risks.length + issues.length + custom.length;
+
+  return ok({ query: q, projects, programs, portfolios, tasks, risks, issues, custom, total });
 }, { permission: "project.view", rateLimit: { limit: 120, windowMs: 60_000 } });

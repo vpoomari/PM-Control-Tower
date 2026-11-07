@@ -4,17 +4,72 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { api, useApi } from "@/lib/client";
+import { api, useApi, useRealtimeRefetch } from "@/lib/client";
 import { money, num } from "@/lib/constants";
 import {
-  PageHeader, SectionCard, StatCard, StatusChip, LoadingBlock, ErrorBlock, EmptyState, Button, Badge, Input, cn,
+  PageHeader, SectionCard, StatCard, StatusChip, LoadingBlock, ErrorBlock, EmptyState, Button, Badge, Input, LiveBadge, cn,
 } from "@/components/pmct/kit";
 import { Label } from "@/components/ui/label";
-import { BookOpen, Save, Trash2, Play, Star, Clock, FileBarChart } from "lucide-react";
+import { BookOpen, Save, Trash2, Play, Star, Clock, FileBarChart, Mail } from "lucide-react";
+import {
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+} from "recharts";
 
 interface Tpl { id: string; code: string; name: string; description: string; category: string; audience: string; kpis: string; charts: string; tables: string; frequency: string; runCount: number }
 interface LibraryData { templates: Tpl[]; categories: { category: string; count: number }[]; total: number }
 interface GenReport { id: string; templateName: string; category: string; generatedBy: string; period: string; createdAt: string; narrative: string | null; dataJson: string }
+
+/** Chart series computed at generation time (reporting API chartData). */
+type ChartSpec = { kind: "bar" | "line" | "pie"; title: string; series?: { name: string; dataKey: string }[]; data: Record<string, string | number>[] };
+const PIE_COLORS = ["#059669", "#d97706", "#dc2626", "#2563eb", "#64748b", "#0e7490"];
+
+function ReportChart({ spec }: { spec: ChartSpec }) {
+  if (!spec?.data?.length) return null;
+  const tip = { fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" };
+  if (spec.kind === "pie") {
+    return (
+      <div className="rounded-lg border border-slate-200 p-3">
+        <p className="text-xs font-semibold text-slate-600 mb-1">{spec.title}</p>
+        <div className="h-52">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={spec.data} dataKey="value" nameKey="name" innerRadius={44} outerRadius={74} paddingAngle={3} strokeWidth={0}>
+                {spec.data.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+              </Pie>
+              <Tooltip contentStyle={tip} />
+              <Legend iconType="circle" iconSize={8} formatter={(v: string) => <span className="text-xs text-slate-600">{v}</span>} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    );
+  }
+  const axis = { tick: { fontSize: 10, fill: "#64748b" }, axisLine: false, tickLine: false };
+  const grid = <CartesianGrid stroke="#e2e8f0" vertical={false} />;
+  const isLine = spec.kind === "line";
+  const Cmp = isLine ? LineChart : BarChart;
+  return (
+    <div className="rounded-lg border border-slate-200 p-3">
+      <p className="text-xs font-semibold text-slate-600 mb-1">{spec.title}</p>
+      <div className="h-52">
+        <ResponsiveContainer width="100%" height="100%">
+          <Cmp data={spec.data} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
+            {grid}
+            <XAxis dataKey="name" {...axis} />
+            <YAxis {...axis} width={44} />
+            <Tooltip contentStyle={tip} />
+            <Legend iconType="circle" iconSize={8} formatter={(v: string) => <span className="text-xs text-slate-600">{v}</span>} />
+            {(spec.series ?? [{ name: "Value", dataKey: "value" }]).map((s, i) =>
+              isLine
+                ? <Line key={s.dataKey} name={s.name} dataKey={s.dataKey} type="monotone" stroke={PIE_COLORS[i % PIE_COLORS.length]} strokeWidth={2} dot={{ r: 2.5 }} />
+                : <Bar key={s.dataKey} name={s.name} dataKey={s.dataKey} fill={PIE_COLORS[i % PIE_COLORS.length]} radius={[3, 3, 0, 0]} />,
+            )}
+          </Cmp>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
 
 const SECTIONS = ["Library", "My Reports", "Report Builder", "Board Packs", "Scheduled", "Subscriptions", "History", "Administration"] as const;
 
@@ -22,8 +77,9 @@ export default function ReportingCenterView() {
   const [section, setSection] = useState<(typeof SECTIONS)[number]>("Library");
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("");
-  const [lastReport, setLastReport] = useState<{ id?: string; templateName: string; kpis: Record<string, unknown>; narrative: string; rag: string } | null>(null);
-  const [viewReport, setViewReport] = useState<{ id: string; templateName: string; period: string; generatedBy: string; createdAt: string; narrative: string | null; data: { kpis: Record<string, unknown> } } | null>(null);
+  const [period, setPeriod] = useState("CURRENT_MONTH");
+  const [lastReport, setLastReport] = useState<{ id?: string; templateName: string; kpis: Record<string, unknown>; narrative: string; rag: string; chartData?: Record<string, ChartSpec> } | null>(null);
+  const [viewReport, setViewReport] = useState<{ id: string; templateName: string; period: string; generatedBy: string; createdAt: string; narrative: string | null; data: { kpis: Record<string, unknown>; chartData?: Record<string, ChartSpec> } } | null>(null);
   const openReport = async (id: string) => {
     try { setViewReport(await api.get("/api/reporting/" + id)); } catch (e) { toast.error(e instanceof Error ? e.message : "Open failed"); }
   };
@@ -37,11 +93,13 @@ export default function ReportingCenterView() {
 
   const query = `/api/reporting?${q ? `q=${encodeURIComponent(q)}&` : ""}${cat ? `category=${cat}&` : ""}`;
   const lib = useApi<LibraryData>(query);
-  const history = useApi<{ reports: GenReport[] }>(section === "History" || section === "My Reports" ? "/api/reporting?history=1" : null);
+  const history = useApi<{ reports: GenReport[] }>(section === "History" || section === "My Reports" || section === "Administration" ? "/api/reporting?history=1" : null);
   const packData = useApi<{ packs: { id: string; name: string; createdAt: string; pages: { title: string }[] }[] }>("/api/reporting/boardpacks");
   const customRpts = useApi<{ customReports: { id: string; name: string; category: string; componentsJson: string }[] }>("/api/reporting/custom");
   const subsData = useApi<{ subscriptions: { id: string; templateId: string; frequency: string; format: string }[]; templates: { id: string; name: string; category: string }[] }>("/api/reporting/subs");
   const schedData = useApi<{ schedules: { id: string; templateId: string; frequency: string; active: boolean; lastRunAt: string | null }[] }>("/api/reporting/boardpacks");
+  // Live: history refreshes whenever a report is generated elsewhere in the org.
+  useRealtimeRefetch(history.refetch, ["report:generated"]);
 
   const toggleFav = (id: string) => {
     const next = favs.includes(id) ? favs.filter((f) => f !== id) : [...favs, id];
@@ -49,13 +107,19 @@ export default function ReportingCenterView() {
     window.localStorage.setItem("pmct.report.favs", JSON.stringify(next));
   };
 
+  // Narrowed locals — TS can't follow subsData.data / lib.data property accesses
+  // through the map/filter callbacks in the Subscriptions & Administration blocks.
+  const subs = subsData.data;
+  const libStats = lib.data;
+
   const generate = async (tpl: Tpl) => {
     setBusy(true);
     try {
-      const res = await api.post<{ report: { id: string; templateName: string; kpis: Record<string, unknown>; narrative: string; rag: string } }>("/api/reporting", { action: "generate", templateId: tpl.id });
+      const res = await api.post<{ report: { id: string; templateName: string; kpis: Record<string, unknown>; narrative: string; rag: string; period: string; chartData?: Record<string, ChartSpec> } }>("/api/reporting", { action: "generate", templateId: tpl.id, period });
       setLastReport(res.report);
-      setViewReport({ id: res.report.id || "", templateName: res.report.templateName, period: "current month", generatedBy: "", createdAt: new Date().toISOString(), narrative: res.report.narrative, data: { kpis: res.report.kpis } });
+      setViewReport({ id: res.report.id || "", templateName: res.report.templateName, period: res.report.period || period, generatedBy: "", createdAt: new Date().toISOString(), narrative: res.report.narrative, data: { kpis: res.report.kpis, chartData: res.report.chartData } });
       toast.success(`${tpl.name} generated from live data`);
+      history.refetch();
     } catch (e) { toast.error(e instanceof Error ? e.message : "Generation failed"); } finally { setBusy(false); }
   };
 
@@ -89,6 +153,23 @@ export default function ReportingCenterView() {
         title="Reporting Center"
         subtitle="177 enterprise report templates across 7 categories — every report computed from live operational data."
         breadcrumb={["Home", "Intelligence", "Reporting Center"]}
+        actions={
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-slate-500 shrink-0">Period</Label>
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              className="h-9 rounded-md border border-slate-200 bg-white px-2.5 text-sm text-slate-700"
+            >
+              <option value="CURRENT_MONTH">Current month</option>
+              <option value="CURRENT_QUARTER">Current quarter</option>
+              <option value="CURRENT_YEAR">Current year</option>
+              <option value="LAST_30_DAYS">Last 30 days</option>
+              <option value="LAST_90_DAYS">Last 90 days</option>
+              <option value="YEAR_TO_DATE">Year to date</option>
+            </select>
+          </div>
+        }
       />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -119,6 +200,13 @@ export default function ReportingCenterView() {
               </div>
             ))}
           </div>
+          {viewReport.data.chartData && Object.keys(viewReport.data.chartData).length > 0 && (
+            <div className="grid gap-3 md:grid-cols-2 mb-3">
+              {Object.entries(viewReport.data.chartData).slice(0, 6).map(([key, spec]) => (
+                <ReportChart key={key} spec={spec} />
+              ))}
+            </div>
+          )}
           <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
             <p className="text-[10px] uppercase text-slate-400 mb-1">Executive commentary — from actual report data</p>
             <p className="text-sm text-slate-700">{viewReport.narrative}</p>
@@ -212,6 +300,13 @@ export default function ReportingCenterView() {
               </div>
             ))}
           </div>
+          {lastReport.chartData && Object.keys(lastReport.chartData).length > 0 && (
+            <div className="grid gap-3 md:grid-cols-2 mb-3">
+              {Object.entries(lastReport.chartData).slice(0, 6).map(([key, spec]) => (
+                <ReportChart key={key} spec={spec} />
+              ))}
+            </div>
+          )}
           <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
             <p className="text-[10px] uppercase text-slate-400 mb-1">AI Executive Commentary — from actual report data</p>
             <p className="text-sm text-slate-700">{lastReport.narrative}</p>
@@ -301,6 +396,97 @@ export default function ReportingCenterView() {
             </SectionCard>
           )}
         </div>
+      )}
+
+      {/* SUBSCRIPTIONS */}
+      {section === "Subscriptions" && (
+        !subs ? <LoadingBlock label="Loading subscriptions…" /> : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <StatCard label="My subscriptions" value={subs.subscriptions.length} sub="Reports delivered on a schedule" icon={<Mail className="h-4 w-4" />} />
+              <StatCard label="Available templates" value={subs.templates.length} sub="Subscribe to any published template" />
+            </div>
+            <SectionCard title="My subscriptions" description="Reports generated and delivered automatically at the chosen frequency.">
+              {subs.subscriptions.length === 0 ? (
+                <EmptyState title="No subscriptions yet" description="Subscribe to a template below to receive it on a schedule." />
+              ) : (
+                <div className="space-y-1.5">
+                  {subs.subscriptions.map((s) => (
+                    <div key={s.id} className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm">
+                      <Mail className="h-4 w-4 text-blue-500 shrink-0" />
+                      <span className="flex-1 font-medium text-slate-700">
+                        {subs.templates.find((t) => t.id === s.templateId)?.name ?? s.templateId.slice(0, 8) + "…"}
+                      </span>
+                      <Badge variant="outline" className="border-slate-200 text-slate-500">{s.frequency}</Badge>
+                      <Badge variant="outline" className="border-slate-200 text-slate-500">{s.format}</Badge>
+                      <Button variant="ghost" size="sm" onClick={() => void unsubscribe(s.id)} title="Unsubscribe">
+                        <Trash2 className="h-4 w-4 text-red-400" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+            <SectionCard title="Subscribe to a report" description="Pick any published template to receive on a recurring basis.">
+              {subs.templates.filter((t) => !subs.subscriptions.some((s) => s.templateId === t.id)).length === 0 ? (
+                <EmptyState title="All available templates are subscribed" />
+              ) : (
+                <div className="grid gap-1.5 md:grid-cols-2">
+                  {subs.templates
+                    .filter((t) => !subs.subscriptions.some((s) => s.templateId === t.id))
+                    .slice(0, 40)
+                    .map((t) => (
+                      <div key={t.id} className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm">
+                        <span className="flex-1 min-w-0">
+                          <span className="block font-medium text-slate-700 truncate">{t.name}</span>
+                          <span className="block text-xs text-slate-400">{t.category}</span>
+                        </span>
+                        <Button size="sm" variant="outline" onClick={() => void subscribe(t.id)}>Subscribe</Button>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </SectionCard>
+          </div>
+        )
+      )}
+
+      {/* ADMINISTRATION */}
+      {section === "Administration" && (
+        !libStats ? <LoadingBlock label="Loading library stats…" /> : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <StatCard label="Published templates" value={libStats.total} sub="Across all categories" icon={<BookOpen className="h-4 w-4" />} />
+              <StatCard label="Categories" value={libStats.categories.length} sub="Executive · Finance · PMO · …" />
+              <StatCard label="Generated reports" value={history.data?.reports.length ?? 0} sub="Last 30 generations" />
+              <StatCard label="Custom reports" value={customRpts.data?.customReports.length ?? 0} sub="Created in the builder" />
+            </div>
+            <SectionCard title="Template distribution" description="Published templates by category — the governed catalogue behind every generated report.">
+              <div className="space-y-2">
+                {libStats.categories.map((c) => (
+                  <div key={c.category} className="flex items-center gap-3">
+                    <span className="w-28 text-xs font-semibold text-slate-600 shrink-0">{c.category}</span>
+                    <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-blue-500"
+                        style={{ width: `${Math.round((c.count / Math.max(1, libStats.total)) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="w-16 text-right text-xs tabular-nums text-slate-500">{c.count} ({Math.round((c.count / Math.max(1, libStats.total)) * 100)}%)</span>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+            <SectionCard title="Governance" description="Reporting administration facts.">
+              <ul className="text-xs text-slate-600 space-y-1.5 list-disc pl-4">
+                <li>All templates are PUBLISHED and versioned — draft templates never render.</li>
+                <li>Every generation is recorded in History with generator, period and narrative.</li>
+                <li>Chart series and KPIs are computed from live operational data at generation time.</li>
+                <li>Subscriptions deliver at the template&apos;s configured frequency; unsubscribe anytime.</li>
+              </ul>
+            </SectionCard>
+          </div>
+        )
       )}
     </div>
   );

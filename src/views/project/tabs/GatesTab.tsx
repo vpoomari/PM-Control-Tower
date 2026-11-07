@@ -72,7 +72,7 @@ export default function GatesTab({ projectId }: { projectId: string }) {
         <StatCard label="Conditional / failed" value={items.filter((g) => ["CONDITIONAL", "FAILED", "DEFERRED"].includes(g.decisionStatus)).length} sub="Attention required" tone="warn" icon={<ShieldAlert className="h-4 w-4" />} />
       </div>
 
-      <SectionCard title="Gate sequence" description="Ordered by lifecycle sequence — decisions require the gate.decide permission">
+      <SectionCard title="Gate sequence" description="Ordered by lifecycle sequence — double-click a gate to record (or revise) its decision; decisions require the gate.decide permission">
         {!items.length ? (
           <EmptyState title="No stage gates defined" description="Gates are created from templates or governance configuration." />
         ) : (
@@ -80,7 +80,12 @@ export default function GatesTab({ projectId }: { projectId: string }) {
             {items.map((g) => {
               const decided = g.decisionStatus !== "PENDING";
               return (
-                <div key={g.id} className="relative rounded-lg border border-slate-200 p-4 pl-12">
+                <div
+                  key={g.id}
+                  onDoubleClick={() => setDialog({ gate: g, decision: decided ? g.decisionStatus : "PASSED", evidence: g.evidence || "" })}
+                  title="Double-click to record (or revise) the gate decision"
+                  className="relative rounded-lg border border-slate-200 p-4 pl-12 cursor-pointer hover:border-blue-200 hover:bg-blue-50/30 transition-colors"
+                >
                   <span className="absolute left-4 top-4 h-6 w-6 rounded-full bg-slate-800 text-white text-xs font-semibold flex items-center justify-center" aria-hidden>
                     {g.sequence}
                   </span>

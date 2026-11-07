@@ -14,12 +14,15 @@ export const POST = withApi(async (ctx) => {
   if (!rule.isActive) throw new ApiError(409, "Rule is inactive — activate it before running");
 
   const startedAt = new Date();
+  // Manual "Run now" tests the ACTIONS, not the conditions — a synthetic context
+  // (entityType: "Manual") can never satisfy entity conditions (severity EQ ...),
+  // which used to record every conditional rule as SKIPPED.
   const triggerCtx = {
     entityType: "Manual",
     entityId: rule.id,
     ...(rule.triggerType === "TASK_OVERDUE" ? { criticality: "HIGH" } : {}),
   };
-  await runAutomations(rule.triggerType, triggerCtx, rule.id);
+  await runAutomations(rule.triggerType, triggerCtx, rule.id, { bypassConditions: true });
 
   const executions = await db.automationExecution.findMany({
     where: { ruleId: rule.id, createdAt: { gte: startedAt } },

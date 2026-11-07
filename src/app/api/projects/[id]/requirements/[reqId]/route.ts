@@ -40,6 +40,7 @@ export const PATCH = withApi(async (ctx) => {
     before, after: requirement, ipAddress: ctx.ip, context: `Project ${id}`,
   });
   emitRealtime("project:updated", { entity: "requirement", action: "updated", projectId: id, requirementId: reqId }, projectRoom(id));
+  emitRealtime("requirement:changed", { projectId: id, action: "updated", requirementId: reqId }, projectRoom(id)); // views subscribe to this name
 
   return ok(requirement);
 }, { permission: "project.manage", rateLimit: { limit: 120, windowMs: 60_000 } });
@@ -56,6 +57,7 @@ export const DELETE = withApi(async (ctx) => {
     before: requirement, ipAddress: ctx.ip, context: `Project ${id}`,
   });
   emitRealtime("project:updated", { entity: "requirement", action: "deleted", projectId: id, requirementId: reqId }, projectRoom(id));
+  emitRealtime("requirement:changed", { projectId: id, action: "deleted", requirementId: reqId }, projectRoom(id)); // views subscribe to this name
 
   return ok({ deleted: true, id: reqId });
 }, { permission: "project.manage", rateLimit: { limit: 120, windowMs: 60_000 } });

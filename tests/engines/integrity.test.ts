@@ -275,7 +275,7 @@ test("prioritization: optimizer beats greedy-by-score and explains exclusions", 
   assert.equal(r.totalCost, 10);
   assert.equal(r.remainingBudget, 0);
   assert.ok(r.totalScore > 84);
-  assert.equal(r.excluded.find((d) => d.candidate.id === "C").reason.includes("Budget exhausted"), true);
+  assert.equal(r.excluded.find((d) => d.candidate.id === "C")?.reason.includes("Budget exhausted"), true);
 });
 test("prioritization: dependency guard explains the chain", () => {
   const c = [
@@ -284,7 +284,7 @@ test("prioritization: dependency guard explains the chain", () => {
   ];
   const r = optimizePortfolio(c, 5); // budget too small for X
   assert.equal(r.selected.length, 0);
-  assert.match(r.excluded.find((d) => d.candidate.id === "Y").reason, /Dependency not funded: Foundation/);
+  assert.match(r.excluded.find((d) => d.candidate.id === "Y")?.reason ?? "", /Dependency not funded: Foundation/);
 });
 test("prioritization: required (regulatory) projects selected first", () => {
   const c = [
@@ -326,7 +326,7 @@ test("finance: totals, ROI", () => {
 test("finance: NPV at 8% matches manual discounting", () => {
   const m = computeBusinessCase(bc);
   const expected = -2000000 + (-100000) / 1.08 + 800000 / Math.pow(1.08, 2) + 1400000 / Math.pow(1.08, 3);
-  assert.ok(Math.abs(m.npv - expected) < 1, 'npv ' + m.npv + ' vs ' + expected);
+  assert.ok(Math.abs((m.npv ?? 0) - expected) < 1, 'npv ' + m.npv + ' vs ' + expected);
   assert.match(m.npvVerdict, /unattractive/); // marginal fixture: NPV negative at 8%
   const good = computeBusinessCase({ ...bc, benefits: [{ name: 'Cost reduction', annualValue: 1200000, startYear: 1, growthPct: 50 }] });
   assert.ok((good.npv ?? 0) > 0);
@@ -341,7 +341,7 @@ test("finance: NPV at 8% matches manual discounting", () => {
 test("finance: unprofitable case -> negative NPV, no fake IRR guarantees", () => {
   const bad = { ...bc, benefits: [{ name: "x", annualValue: 100000, startYear: 1 }] };
   const m = computeBusinessCase(bad);
-  assert.ok(m.npv < 0);
+  assert.ok((m.npv ?? 0) < 0);
   assert.match(m.npvVerdict, /unattractive/);
 });
 test("finance: payback detection", () => {

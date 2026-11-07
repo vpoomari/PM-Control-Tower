@@ -1,7 +1,7 @@
 "use client";
 // PM CONTROL TOWER — CONNECT · Control Automations (rules, executions, run-now)
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api, useApi, useRealtimeRefetch } from "@/lib/client";
 import {
@@ -57,6 +57,23 @@ export default function AutomationsView() {
   const [runningId, setRunningId] = useState<string | null>(null);
   const [editing, setEditing] = useState<AutomationRule | null>(null);
   const [creating, setCreating] = useState(false);
+  const [scanning, setScanning] = useState(false);
+
+  // Time-based triggers (TASK_OVERDUE / MILESTONE_MISSED) have no in-process
+  // scheduler — scan on mount so entering this view always reflects fresh state.
+  useEffect(() => { void scanNow(true); }, []);
+
+  const scanNow = async (quiet = false) => {
+    setScanning(true);
+    try {
+      const res = await api.post<{ overdueTasks: number; missedMilestones: number; fired: number }>("/api/automations/scan");
+      if (res.fired > 0) toast.success(`Scan fired ${res.fired} rule${res.fired === 1 ? "" : "s"}`, { description: `${res.overdueTasks} overdue tasks · ${res.missedMilestones} missed milestones (24h dedupe)` });
+      else if (!quiet) toast.success("Scan complete — nothing new to fire", { description: `${res.overdueTasks} overdue tasks · ${res.missedMilestones} missed milestones (already fired in last 24h)` });
+      list.refetch();
+    } catch (e) {
+      if (!quiet) toast.error("Scan failed", { description: e instanceof Error ? e.message : "Unknown error" });
+    } finally { setScanning(false); }
+  };
 
   const rules = list.data?.rules ?? [];
   const history = list.data?.history ?? [];
@@ -108,6 +125,9 @@ export default function AutomationsView() {
         subtitle="Event-driven rules that watch the delivery engine and act automatically — escalations, recalculations, notifications and governance evaluation."
         actions={
           <>
+            <Button variant="outline" size="sm" onClick={() => void scanNow(false)} disabled={scanning}>
+              <RefreshCw className={scanning ? "h-4 w-4 mr-1.5 animate-spin" : "h-4 w-4 mr-1.5"} /> Scan now
+            </Button>
             <Button variant="outline" size="sm" onClick={list.refetch}><RefreshCw className="h-4 w-4 mr-1.5" /> Refresh</Button>
             <Button size="sm" onClick={() => setCreating(true)}><Plus className="h-4 w-4 mr-1.5" /> New rule</Button>
           </>
@@ -121,15 +141,28 @@ export default function AutomationsView() {
         <StatCard label="Failed" value={failedRuns} tone={failedRuns ? "bad" : "default"} icon={<XCircle className="h-4 w-4" />} />
       </div>
 
+      {/* Live trigger coverage — shows which of the 11 triggers have emitters wired */}
+      <SectionCard
+        title="Trigger coverage"
+        description="Eleven declared triggers — emitters fire five from live workflows, HEALTH_CHANGED and SCHEDULE_CHANGED cascade from the engines, and the overdue pair is discovered by the scanner (Scan now)."
+      >
+        <div className="flex flex-wrap gap-1.5">
+          {AUTOMATION_TRIGGERS.map((t) => (
+            <Badge key={t} variant="outline" className="font-mono text-[10px]">{t}</Badge>
+          ))}
+        </div>
+      </SectionCard>
+
       {list.loading && !list.data ? <LoadingBlock label="Loading automation rules…" />
         : list.error ? <ErrorBlock message={list.error} onRetry={list.refetch} />
         : rules.length === 0 ? <EmptyState title="No automation rules" description="Create your first rule to automate escalations and recalculations." />
         : (
-        <SectionCard title="Automation rules" description="Click a row to inspect actions and recent executions">
+        <SectionCard title="Automation rules" description="Click a row to inspect actions and recent executions · double-click to edit">
           <DataTable<AutomationRule & Record<string, unknown>>
             keyField="id"
             rows={rules as (AutomationRule & Record<string, unknown>)[]}
             onRowClick={(r) => setDetailId(r.id)}
+            onRowDoubleClick={(r) => setEditing(r)}
             maxHeight="480px"
             columns={[
               { key: "name", header: "Rule", render: (r) => (

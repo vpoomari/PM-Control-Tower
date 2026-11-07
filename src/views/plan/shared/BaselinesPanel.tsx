@@ -11,9 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { fmtDate, fmtDateTime, money, num } from "@/lib/constants";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import { customFieldColumns } from "@/components/fields/custom-columns";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
 import { Layers, Rocket, History, Wallet, Plus } from "lucide-react";
 
 interface Baseline {
+  [key: string]: unknown;
   id: string;
   version: number;
   name: string;
@@ -73,6 +77,10 @@ export default function BaselinesPanel({ projectId }: { projectId: string }) {
   const items = bl.data?.items || [];
   const active = items.find((b) => b.id === bl.data?.activeBaselineId);
 
+  // --- Field Dictionary: assignments + bulk values for the visible baselines ---
+  const fields = useModuleFieldsHandle("baseline", items.map((b) => b.id));
+  const cfCols = customFieldColumns<Baseline>(fields.tableColumns, fields.values);
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -85,7 +93,12 @@ export default function BaselinesPanel({ projectId }: { projectId: string }) {
       <SectionCard
         title="Performance baselines"
         description="Snapshots freeze schedule, effort and cost for variance control. Activation supersedes prior versions."
-        actions={<Button size="sm" className="h-8" onClick={() => setOpen(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Create snapshot</Button>}
+        actions={(
+          <>
+            {fields.actions}
+            <Button size="sm" className="h-8" onClick={() => setOpen(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Create snapshot</Button>
+          </>
+        )}
       >
         {bl.loading ? <LoadingBlock label="Loading baselines…" />
           : bl.error ? <ErrorBlock message={bl.error} onRetry={bl.refetch} />
@@ -108,6 +121,7 @@ export default function BaselinesPanel({ projectId }: { projectId: string }) {
                     <th className="px-3 py-2.5 font-medium text-right">Hours</th>
                     <th className="px-3 py-2.5 font-medium text-right">Cost</th>
                     <th className="px-3 py-2.5 font-medium">Created</th>
+                    {cfCols.map((c) => <th key={c.key} className="px-3 py-2.5 font-medium">{c.header}</th>)}
                     <th className="px-3 py-2.5 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
@@ -127,7 +141,9 @@ export default function BaselinesPanel({ projectId }: { projectId: string }) {
                       <td className="px-3 py-2 text-xs text-slate-500 whitespace-nowrap" title={b.activatedAt ? `Activated ${fmtDateTime(b.activatedAt)}` : undefined}>
                         {fmtDate(b.createdAt)}
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      {cfCols.map((c) => <td key={c.key} className="px-3 py-2 text-slate-700 align-middle">{c.render?.(b)}</td>)}
+                      <td className="px-3 py-2 text-right whitespace-nowrap">
+                        <RecordFieldsButton moduleKey="baseline" recordId={b.id} label={b.name} onSaved={fields.refetch} />
                         {b.status === "ACTIVE" ? (
                           <span className="text-xs font-medium text-emerald-700">In use</span>
                         ) : (

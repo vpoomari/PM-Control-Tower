@@ -11,7 +11,7 @@ import {
 import { Drawer, DrawerSection, KV } from "../connect/shared/drawer";
 import { fmtDateTime } from "@/lib/constants";
 import {
-  Users, UserPlus, RefreshCw, Pencil, ShieldCheck, ShieldOff, Activity,
+  Users, UserPlus, RefreshCw, Pencil, ShieldCheck, ShieldOff, Activity, ImagePlus,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -20,19 +20,22 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Avatar } from "@/components/pmct/avatar";
+import { AvatarPickerDialog } from "@/components/pmct/avatar-picker";
+import { AVATAR_COUNT } from "@/lib/avatars";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import { customFieldColumns } from "@/components/fields/custom-columns";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
 
 interface UserRow {
+  [key: string]: unknown;
   id: string; email: string; name: string; title: string | null; department: string | null;
-  avatarColor: string; isActive: boolean; isSuperAdmin: boolean; lastLoginAt: string | null;
+  avatarColor: string; avatarUrl?: string | null; isActive: boolean; isSuperAdmin: boolean; lastLoginAt: string | null;
   createdAt: string; roles: Array<{ id: string; code: string; name: string; level: number }>;
 }
 interface AuditRow {
   id: string; action: string; entityType: string; entityName: string | null;
   severity: string; createdAt: string; ipAddress: string | null;
-}
-
-function initials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("") || "?";
 }
 
 export default function AdminUsersView() {
@@ -56,6 +59,9 @@ export default function AdminUsersView() {
   // with current values instead of the stale snapshot it was opened with.
   const editingUser = editing ? (all.find((u) => u.id === editing.id) ?? editing) : null;
 
+  // --- Field Dictionary: assignments + bulk values for the visible users ---
+  const fields = useModuleFieldsHandle("user", all.map((u) => u.id));
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -65,6 +71,7 @@ export default function AdminUsersView() {
         subtitle="Directory of platform identities, their roles and access state. Role changes and deactivations are written to the audit trail."
         actions={
           <>
+            {fields.actions}
             <Button variant="outline" size="sm" onClick={users.refetch}><RefreshCw className="h-4 w-4 mr-1.5" /> Refresh</Button>
             <Button size="sm" onClick={() => setShowCreate(true)}><UserPlus className="h-4 w-4 mr-1.5" /> New user</Button>
           </>
@@ -77,7 +84,7 @@ export default function AdminUsersView() {
         <StatCard label="Roles assigned" value={new Set(all.flatMap((u) => u.roles.map((r) => r.code))).size} sub="Distinct role codes in use" icon={<ShieldCheck className="h-4 w-4" />} />
       </div>
 
-      <SectionCard title="Directory" description="Click a user to manage roles and view recent activity">
+      <SectionCard title="Directory" description="Click (or double-click) a user to manage roles, avatar and access state">
         <div className="mb-3">
           <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, email, title or role…" className="h-9 max-w-sm bg-white" />
         </div>
@@ -89,16 +96,12 @@ export default function AdminUsersView() {
             keyField="id"
             rows={rows as (UserRow & Record<string, unknown>)[]}
             onRowClick={(u) => setEditing(u)}
+            onRowDoubleClick={(u) => setEditing(u)}
             maxHeight="560px"
             columns={[
               { key: "name", header: "User", render: (u) => (
                 <div className="flex items-center gap-3 min-w-[220px]">
-                  <span
-                    className="h-8 w-8 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0"
-                    style={{ background: u.avatarColor || "#0b1f3a" }}
-                  >
-                    {initials(u.name)}
-                  </span>
+                  <Avatar name={u.name} color={u.avatarColor} url={u.avatarUrl} size="h-8 w-8 text-[11px]" />
                   <div className="min-w-0">
                     <p className="font-medium text-slate-800 truncate">{u.name}</p>
                     <p className="text-xs text-slate-500 truncate">{u.email}</p>
@@ -115,6 +118,11 @@ export default function AdminUsersView() {
               ) },
               { key: "isActive", header: "Status", render: (u) => <StatusChip status={u.isActive ? "ACTIVE" : "INACTIVE"} /> },
               { key: "lastLoginAt", header: "Last login", render: (u) => <span className="text-xs tabular-nums text-slate-500">{u.lastLoginAt ? fmtDateTime(u.lastLoginAt) : "never"}</span> },
+              // Field Dictionary: dynamic columns for any field flagged "in table"
+              ...customFieldColumns<UserRow>(fields.tableColumns, fields.values),
+              { key: "cf", header: "", className: "w-10", render: (u) => (
+                <RecordFieldsButton moduleKey="user" recordId={u.id} label={u.name} onSaved={fields.refetch} />
+              ) },
               { key: "actions", header: "", render: (u) => (
                 <div className="justify-end" onClick={(e) => e.stopPropagation()}>
                   <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(u)}>
@@ -226,6 +234,7 @@ function UserDrawer({ user, onClose, roles, onChanged }: {
   const [roleCode, setRoleCode] = useState("");
   const [saving, setSaving] = useState(false);
   const [auditKey, setAuditKey] = useState<string | null>(null);
+  const [avatarOpen, setAvatarOpen] = useState(false);
 
   const activity = useApi<{ events: AuditRow[] }>(
     user ? `/api/audit?userId=${user.id}&take=10` : null,
@@ -261,6 +270,16 @@ function UserDrawer({ user, onClose, roles, onChanged }: {
     } finally { setSaving(false); }
   };
 
+  // Persist an avatar picked from the bundled library for this user (admin action).
+  // The picker dialog owns the error toast; rethrowing keeps it open on failure.
+  const saveAvatar = async (url: string | null) => {
+    if (!user) return;
+    await api.patch(`/api/admin/users/${user.id}`, { avatarUrl: url });
+    toast.success(url ? "Avatar updated" : "Switched to initials", { description: `${user.name}'s avatar was changed. Recorded in the audit trail.` });
+    onChanged();
+    setAuditKey(String(Date.now()));
+  };
+
   return (
     <Drawer open={user !== null} onOpenChange={(v) => { if (!v) { setRoleCode(""); onClose(); } }} title={user?.name ?? "User"} description={user?.email} wide>
       {!user ? null : (
@@ -272,6 +291,23 @@ function UserDrawer({ user, onClose, roles, onChanged }: {
             <KV label="Roles">{user.roles.map((r) => r.name).join(", ") || "none"}</KV>
             <KV label="Last login">{user.lastLoginAt ? fmtDateTime(user.lastLoginAt) : "never"}</KV>
             <KV label="Created">{fmtDateTime(user.createdAt)}</KV>
+          </DrawerSection>
+
+          <DrawerSection
+            title="Avatar"
+            actions={
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setAvatarOpen(true)}>
+                <ImagePlus className="h-3.5 w-3.5 mr-1" /> Change avatar
+              </Button>
+            }
+          >
+            <div className="flex items-center gap-3">
+              <Avatar name={user.name} color={user.avatarColor} url={user.avatarUrl} size="h-12 w-12 text-sm" />
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-slate-700">{user.avatarUrl ? "Avatar from the bundled library" : "Colored initials — no avatar chosen yet"}</p>
+                <p className="text-[10px] text-slate-400">Pick from {AVATAR_COUNT} bundled avatars; the change is recorded in the audit trail.</p>
+              </div>
+            </div>
           </DrawerSection>
 
           <DrawerSection title="Change role">
@@ -317,6 +353,15 @@ function UserDrawer({ user, onClose, roles, onChanged }: {
                 </div>
               ))}
           </DrawerSection>
+
+          <AvatarPickerDialog
+            open={avatarOpen}
+            onOpenChange={setAvatarOpen}
+            current={user?.avatarUrl ?? null}
+            onPick={saveAvatar}
+            title={`Choose an avatar for ${user?.name ?? "this user"}`}
+            description="Picks from the bundled avatar library. The change is recorded in the audit trail."
+          />
         </>
       )}
     </Drawer>

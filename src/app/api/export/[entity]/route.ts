@@ -7,6 +7,7 @@ import { withApi, ok, ApiError, writeAudit } from "@/lib/api";
 import { hasPermission } from "@/lib/rbac";
 import { getEntity } from "@/lib/io/entities";
 import { toCsv } from "@/lib/csv";
+import { withCustomFields } from "@/lib/fields/enrich";
 
 export const GET = withApi(async (ctx) => {
   const key = ctx.params.entity ?? "";
@@ -22,8 +23,22 @@ export const GET = withApi(async (ctx) => {
   const projectId = ctx.searchParams.get("projectId");
   const stamp = new Date().toISOString().slice(0, 10);
 
+  const subject = ctx.session
+    ? { roles: ctx.session.roles, isSuperAdmin: ctx.session.isSuperAdmin }
+    : null;
+
   if (meta) {
-    return ok({ entity: key, label: def.label, columns: def.columns, importable: Boolean(def.managePermission) });
+    // Core columns + any eligible dictionary fields for this entity.
+    const rows = await def.exportRows({ projectId, scopeAll: true });
+    const custom = await withCustomFields(key, rows, subject);
+    return ok({
+      entity: key,
+      label: def.label,
+      columns: [...def.columns, ...custom.columns],
+      coreColumns: def.columns.length,
+      customColumns: custom.columns,
+      importable: Boolean(def.managePermission),
+    });
   }
 
   if (template) {
@@ -41,18 +56,37 @@ export const GET = withApi(async (ctx) => {
     });
   }
 
-  const rows = await def.exportRows({ projectId, scopeAll: true });
+  const allRows = await def.exportRows({ projectId, scopeAll: true });
+  // Append dictionary columns (never alters the core export shape).
+  const custom = await withCustomFields(key, allRows, subject);
+  custom.apply(allRows);
+  let columns = [...def.columns, ...custom.columns];
+
+  // AI export support: ?cols=key,key (column subset) and ?q=text (case-insensitive
+  // "contains" filter across the exported columns). Both are validated against this
+  // entity's real column set — unknown keys are ignored, never trusted.
+  const colsParam = ctx.searchParams.get("cols");
+  const qParam = ctx.searchParams.get("q")?.trim();
+  if (colsParam) {
+    const wanted = new Set(colsParam.split(",").map((s) => s.trim()).filter(Boolean));
+    const subset = columns.filter((c) => wanted.has(c.key));
+    if (subset.length) columns = subset;
+  }
+  const rows = qParam
+    ? allRows.filter((r) => columns.some((c) => String(r[c.key] ?? "").toLowerCase().includes(qParam.toLowerCase())))
+    : allRows;
 
   if (format === "json") {
-    return ok({ entity: key, label: def.label, columns: def.columns, count: rows.length, rows });
+    return ok({ entity: key, label: def.label, columns, count: rows.length, rows });
   }
 
-  const csv = toCsv(def.columns, rows);
+  const csv = toCsv(columns, rows);
   const session = ctx.session;
   void writeAudit({
     userId: session?.id, userName: session?.name, role: session?.roles?.[0] ?? null,
     action: "EXPORT", entityType: key, entityId: null, entityName: def.label,
-    context: `${rows.length} rows (${format})`, severity: "INFO",
+    context: `${rows.length} rows (${format})${custom.columns.length ? `, ${custom.columns.length} custom field(s)` : ""}`,
+    severity: "INFO",
     ipAddress: ctx.ip, userAgent: ctx.req.headers.get("user-agent"),
   });
 

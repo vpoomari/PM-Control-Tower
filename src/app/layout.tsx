@@ -15,18 +15,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PM Control Tower — Enterprise Project, Program & Portfolio Management",
+  title: "Control Tower — Czarnikow × Optinus Project Control",
   description:
     "One platform. Complete project intelligence. Greater outcomes. Portfolio, program and project delivery with scheduling, resources, timesheets, financials, EVM, RAID, governance, automations and an AI PM assistant.",
   keywords: ["project management", "PMO", "portfolio", "EVM", "governance", "control tower"],
-  authors: [{ name: "PM Control Tower" }],
+  authors: [{ name: "Control Tower · Czarnikow × Optinus" }],
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b1f3a",
+  themeColor: "#0B1026",
   width: "device-width",
   initialScale: 1,
 };
+
+// Apply the user's UI theme (localStorage "pmct_theme") before first paint so
+// there is no flash of the wrong theme. Default: the Control Tower 3D theme.
+const THEME_INIT = `try{var t=localStorage.getItem("pmct_theme");document.documentElement.setAttribute("data-theme",(t==="classic"||t==="ct3d")?t:"ct3d");}catch(e){document.documentElement.setAttribute("data-theme","ct3d");}`;
 
 export default function RootLayout({
   children,
@@ -35,7 +39,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+      </head>
       <body
+        suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
         {children}

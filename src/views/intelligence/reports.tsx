@@ -2,7 +2,7 @@
 // PM CONTROL TOWER — INTELLIGENCE · Report library (executive summary, delivery performance, CSV exports)
 
 import { toast } from "sonner";
-import { useApi } from "@/lib/client";
+import { useApi, useRealtimeRefetch } from "@/lib/client";
 import {
   PageHeader, StatCard, SectionCard, DataTable, Column, RagBadge, StatusChip,
   LoadingBlock, ErrorBlock, Metric, Button, Badge,
@@ -14,6 +14,25 @@ import {
 import {
   FileText, Activity, Download, Printer, TrendingUp, ShieldCheck, Clock, Layers,
 } from "lucide-react";
+
+/** Live freshness pill — "Live · HH:MM" with a pulsing dot from generatedAt. */
+function LiveBadge({ at }: { at?: string | null }) {
+  if (!at) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700"
+      title={`Bundle generated ${new Date(at).toLocaleString()}`}
+    >
+      <span className="relative flex h-1.5 w-1.5">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      </span>
+      Live · {new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+    </span>
+  );
+}
+
+const goTo = (hash: string) => { window.location.hash = hash; };
 
 interface ProjectRow { id: string; code: string; name: string; status: string; ragStatus: string; currentBudget: number; actualCost: number; startDate: string | null; endDate: string | null; healthScore: number | null }
 
@@ -95,6 +114,9 @@ const REPORT_CARDS = [
 export default function ReportsView() {
   const exec = useApi<ExecutiveReport>("/api/reports/executive");
   const analytics = useApi<AnalyticsReport>("/api/reports/analytics");
+  // Live: the library refreshes itself whenever the source feeds change.
+  useRealtimeRefetch(exec.refetch, ["project:updated", "project:health", "evm:changed", "governance:changed", "report:generated"]);
+  useRealtimeRefetch(analytics.refetch, ["data:imported", "actuals:changed", "report:generated"]);
 
   const ragTotal = exec.data ? exec.data.projectKpis.byRag.reduce((s, r) => s + r.count, 0) || 1 : 1;
 
@@ -143,6 +165,7 @@ export default function ReportsView() {
         subtitle="Governed, generated-on-demand reporting from the control tower data engine. Every figure below is rendered from live API data."
         actions={
           <>
+            <LiveBadge at={d?.generatedAt} />
             <Button variant="outline" size="sm" onClick={() => { toast.info("Opening print dialog — use the browser's \"Save as PDF\" option."); setTimeout(() => window.print(), 150); }}>
               <Printer className="h-4 w-4 mr-1.5" /> Print / PDF
             </Button>
@@ -178,18 +201,26 @@ export default function ReportsView() {
           {!d ? <LoadingBlock /> : (
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-5">
-                <StatCard label="Portfolios" value={d.portfolios.length} sub={`${d.projectKpis.total} projects under management`} />
-                <StatCard label="Portfolio budget" value={money(d.financials.currentBudget)} sub={`Actuals ${money(d.financials.actualCost)}`} />
-                <StatCard label="Forecast" value={money(d.financials.forecastCost)} sub={`vs baseline ${money(d.financials.baselineBudget)}`} tone={d.financials.forecastCost > d.financials.baselineBudget ? "warn" : "good"} />
-                <StatCard label="Mean EVM" value={`CPI ${num(d.evmAverages.meanCpi, 2)} · SPI ${num(d.evmAverages.meanSpi, 2)}`} sub={`Across ${d.evmAverages.projectCount} executing projects`} />
+                <StatCard label="Portfolios" value={d.portfolios.length} sub={`${d.projectKpis.total} projects under management`}
+                  spark={d.projectKpis.byRag.map((r) => r.count)} hint="Open portfolio register"
+                  onClick={() => goTo("/portfolios")} />
+                <StatCard label="Portfolio budget" value={money(d.financials.currentBudget)} sub={`Actuals ${money(d.financials.actualCost)}`}
+                  hint="Open financials" onClick={() => goTo("/financials")} />
+                <StatCard label="Forecast" value={money(d.financials.forecastCost)} sub={`vs baseline ${money(d.financials.baselineBudget)}`} tone={d.financials.forecastCost > d.financials.baselineBudget ? "warn" : "good"}
+                  delta={{ value: Number(num(((d.financials.forecastCost - d.financials.baselineBudget) / (d.financials.baselineBudget || 1)) * 100, 1)), unit: "%", good: d.financials.forecastCost <= d.financials.baselineBudget, label: "Forecast vs baseline" }}
+                  hint="Open EVM control" onClick={() => goTo("/evm")} />
+                <StatCard label="Mean EVM" value={`CPI ${num(d.evmAverages.meanCpi, 2)} · SPI ${num(d.evmAverages.meanSpi, 2)}`} sub={`Across ${d.evmAverages.projectCount} executing projects`}
+                  spark={d.evmAverages.perProject.map((p) => p.cpi)} hint="Open EVM control"
+                  onClick={() => goTo("/evm")} />
               </div>
 
               {/* Portfolio table */}
               <div className="mb-5">
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Portfolio register</h4>
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Portfolio register — click a row to drill down</h4>
                 <DataTable
                   keyField="id"
                   rows={d.portfolios}
+                  onRowClick={(r) => goTo(`/portfolios`)}
                   columns={[
                     { key: "code", header: "Portfolio", render: (r) => <div><p className="font-medium text-slate-800">{r.code}</p><p className="text-xs text-slate-500">{r.name}</p></div> },
                     { key: "status", header: "Status", render: (r) => <StatusChip status={r.status} /> },
@@ -205,21 +236,26 @@ export default function ReportsView() {
               <div className="grid gap-4 lg:grid-cols-3 mb-5">
                 {/* RAG distribution */}
                 <div className="rounded-lg border border-slate-200 p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">RAG distribution</h4>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">RAG distribution — click to open projects</h4>
                   <div className="space-y-3">
                     {d.projectKpis.byRag.map((r) => (
-                      <div key={r.rag}>
-                        <div className="flex items-center justify-between mb-1">
+                      <button
+                        key={r.rag}
+                        onClick={() => goTo("/projects")}
+                        title={`Open projects filtered to ${r.rag}`}
+                        className="block w-full text-left group"
+                      >
+                        <div className="flex items-center justify-between mb-1 group-hover:opacity-80">
                           <RagBadge rag={r.rag} />
                           <span className="text-xs tabular-nums text-slate-500">{r.count} of {d.projectKpis.total}</span>
                         </div>
-                        <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                        <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden group-hover:opacity-80">
                           <div
                             className={`h-full rounded-full ${r.rag === "GREEN" ? "bg-emerald-500" : r.rag === "AMBER" ? "bg-amber-500" : "bg-red-500"}`}
                             style={{ width: `${Math.round((r.count / ragTotal) * 100)}%` }}
                           />
                         </div>
-                      </div>
+                      </button>
                     ))}
                     <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-3">
                       <Metric label="Avg health" value={num(d.projectKpis.avgHealthScore, 1)} />
@@ -251,27 +287,27 @@ export default function ReportsView() {
 
                 {/* Governance queue */}
                 <div className="rounded-lg border border-slate-200 p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Governance queue</h4>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Governance queue — click to open the queue</h4>
                   <div className="space-y-1.5 mb-3">
-                    <div className="flex items-center justify-between text-xs">
+                    <button onClick={() => goTo("/gates")} className="flex w-full items-center justify-between text-xs hover:bg-slate-50 rounded px-1 -mx-1 py-0.5">
                       <span className="flex items-center gap-1.5 text-slate-600"><ShieldCheck className="h-3.5 w-3.5 text-slate-400" /> Stage gates pending decision</span>
                       <span className="font-semibold tabular-nums">{d.governanceQueue.pendingGates.length}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
+                    </button>
+                    <button onClick={() => goTo("/changes")} className="flex w-full items-center justify-between text-xs hover:bg-slate-50 rounded px-1 -mx-1 py-0.5">
                       <span className="flex items-center gap-1.5 text-slate-600"><Layers className="h-3.5 w-3.5 text-slate-400" /> Change requests in assessment / approval</span>
                       <span className="font-semibold tabular-nums">{d.governanceQueue.changeRequests.length}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
+                    </button>
+                    <button onClick={() => goTo("/milestones")} className="flex w-full items-center justify-between text-xs hover:bg-slate-50 rounded px-1 -mx-1 py-0.5">
                       <span className="flex items-center gap-1.5 text-slate-600"><Clock className="h-3.5 w-3.5 text-slate-400" /> Overdue milestones</span>
                       <span className="font-semibold tabular-nums">{d.overdueMilestones.count}</span>
-                    </div>
+                    </button>
                   </div>
                   <div className="space-y-1">
                     {d.topRisks.slice(0, 3).map((r) => (
-                      <div key={r.id} className="flex items-center gap-2 text-xs">
+                      <button key={r.id} onClick={() => goTo("/raid")} className="flex w-full items-center gap-2 text-xs hover:bg-slate-50 rounded px-1 -mx-1 py-0.5 text-left">
                         <Badge variant="outline" className={r.severity === "CRITICAL" ? "bg-red-50 text-red-700 border-red-200" : "bg-amber-50 text-amber-700 border-amber-200"}>{r.code}</Badge>
                         <span className="truncate text-slate-600">{r.title}</span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>

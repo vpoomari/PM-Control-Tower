@@ -1,6 +1,6 @@
 // PM CONTROL TOWER — Assumption Detail API
 // GET    /api/assumptions/[id]
-// PATCH  /api/assumptions/[id] — status (VALID|AT_RISK|INVALID|CLOSED), validation stamp
+// PATCH  /api/assumptions/[id] — status (TO_VALIDATE|VALID|AT_RISK|INVALID|CLOSED), validation stamp
 // DELETE /api/assumptions/[id]
 
 import { z } from "zod";
@@ -9,7 +9,7 @@ import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 import { writeAudit } from "@/lib/audit";
 import { emitRealtime, projectRoom } from "@/lib/realtime";
 
-const ASSUMPTION_STATUSES = ["VALID", "AT_RISK", "INVALID", "CLOSED"] as const;
+const ASSUMPTION_STATUSES = ["TO_VALIDATE", "VALID", "AT_RISK", "INVALID", "CLOSED"] as const;
 
 export const GET = withApi(async (ctx) => {
   const { id } = ctx.params;

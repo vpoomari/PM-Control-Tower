@@ -46,7 +46,7 @@ export const GET = withApi(async () => {
 
   const ownerIds = [...new Set(portfolios.map((p) => p.ownerId).filter((x): x is string => Boolean(x)))];
   const owners = ownerIds.length
-    ? await db.user.findMany({ where: { id: { in: ownerIds } }, select: { id: true, name: true, avatarColor: true } })
+    ? await db.user.findMany({ where: { id: { in: ownerIds } }, select: { id: true, name: true, avatarColor: true, avatarUrl: true } })
     : [];
   const ownerById = new Map(owners.map((u) => [u.id, u]));
 

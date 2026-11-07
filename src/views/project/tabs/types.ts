@@ -5,11 +5,17 @@ export interface ProjectCore {
   code: string;
   name: string;
   description: string | null;
+  programId: string | null;
+  portfolioId: string | null;
+  ownerId: string | null;
+  managerId: string | null;
+  sponsorId: string | null;
   status: string;
   priority: string;
   phase: string;
   methodology: string;
   riskLevel: string;
+  billingType: string;
   currency: string;
   startDate: string | null;
   endDate: string | null;
@@ -28,6 +34,8 @@ export interface ProjectCore {
   objectives: string | null;
   successCriteria: string | null;
   statusDate: string | null;
+  /** Dynamic Field Configuration Engine values (keyed by fieldKey; raw Json → use parseCustomData) */
+  customData?: unknown;
 }
 export interface ProjectDetailBundle {
   project: ProjectCore;

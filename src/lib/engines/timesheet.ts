@@ -67,8 +67,17 @@ export async function submitTimesheet(id: string, actor: Actor, ip?: string) {
     data: { entityType: "Timesheet", entityId: id, projectId: updated.entries[0]?.projectId || null, approvalType: "TIMESHEET", requesterId: ts.userId, approverId: approvers[0]?.id, status: "PENDING" },
   });
   emitRealtime("timesheet:submitted", { timesheetId: id, resourceId: ts.resourceId, hours: updated.totalHours }, `user:${actor.id}`);
+  emitRealtime("timesheet:changed", { timesheetId: id, status: "SUBMITTED", projectId: updated.entries[0]?.projectId || null }); // EvmTab listens for this name
   await writeAudit({ userId: actor.id, userName: actor.name, role: actor.role, action: "SUBMIT", entityType: "Timesheet", entityId: id, entityName: `Week of ${ts.weekStart.toISOString().slice(0, 10)}`, after: { status: "SUBMITTED", hours: updated.totalHours }, ipAddress: ip });
-  await runAutomations("TIMESHEET_SUBMITTED", { entityType: "Timesheet", entityId: id, timesheetId: id });
+  // Rich context: RECALC_HEALTH / RECALC_CPM / EVALUATE_GOVERNANCE actions need
+  // projectId(s), and conditions can filter on hours — the old ctx was so thin
+  // those actions silently no-oped.
+  const submittedProjects = [...new Set(updated.entries.map((e) => e.projectId).filter((p): p is string => !!p))];
+  await runAutomations("TIMESHEET_SUBMITTED", {
+    entityType: "Timesheet", entityId: id, timesheetId: id,
+    projectId: submittedProjects[0] ?? null, projects: submittedProjects,
+    hours: updated.totalHours, billableHours: updated.billableHours, resourceId: ts.resourceId,
+  });
   return updated;
 }
 
@@ -133,6 +142,7 @@ export async function approveTimesheet(id: string, actor: Actor, comments?: stri
   }
 
   emitRealtime("timesheet:approved", { timesheetId: id, resourceId: ts.resourceId }, projectRoom(affectedProjects.values().next().value || ""));
+  emitRealtime("timesheet:changed", { timesheetId: id, status: "APPROVED", projectId: [...affectedProjects][0] ?? null }); // EvmTab listens for this name
   await writeAudit({ userId: actor.id, userName: actor.name, role: actor.role, action: "APPROVE", entityType: "Timesheet", entityId: id, before: { status: ts.status }, after: { status: "APPROVED", projects: [...affectedProjects] }, ipAddress: ip });
   await runAutomations("TIMESHEET_APPROVED", { entityType: "Timesheet", entityId: id, timesheetId: id, projects: [...affectedProjects] });
   return db.timesheet.findUnique({ where: { id }, include: { entries: true } });

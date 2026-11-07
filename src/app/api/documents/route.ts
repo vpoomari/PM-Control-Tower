@@ -29,7 +29,7 @@ export const POST = withApi(async (ctx) => {
   const nextVer = existing ? String(Number(existing.version) + 1) : "1.0";
   const doc = await db.document.create({
     data: {
-      projectId: body.projectId, name: body.name, content: body.content, entityRef: body.entityRef ?? null,
+      projectId: body.projectId, name: body.name,
       docType: body.docType ?? null, category: body.category ?? null,
       uploadedBy: session.name, sizeKb: Math.round(body.content.length / 1024 * 10) / 10, version: nextVer,
     },

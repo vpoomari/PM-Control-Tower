@@ -1,6 +1,9 @@
 // PM CONTROL TOWER — AI PM Assistant
 // POST /api/assistant — governed natural-language Q&A over the control-tower data.
 // Flow: active AI connector → compact governed context → LLM → persisted AIExecution.
+// LLM routing: a saved BYOK key (Administration → Settings → AI provider) runs
+// through the shared provider adapters (Gemini/OpenAI/Groq); connectors that
+// carry no key material fall back to the z-ai-web-dev-sdk (.z-ai-config) path.
 // GET  /api/assistant — last 20 AI executions (own, or all for admins).
 // The z-ai-web-dev-sdk is imported ONLY here, server-side, never on the client.
 
@@ -9,6 +12,13 @@ import { db } from "@/lib/db";
 import { withApi, ok, ApiError, parseBody } from "@/lib/api";
 import { round2 } from "@/lib/constants";
 import { writeAudit } from "@/lib/audit";
+// BYOK key handling + provider adapters — the SAME path every other AI feature
+// uses (Administration → Settings → AI provider), so one saved key powers all.
+import { decryptSecret, looksEncrypted } from "@/lib/ai/key-vault";
+import {
+  AiProviderError, complete, fallbackFor, providerLabel, toProviderError, type AiErrorKind,
+} from "@/lib/ai/providers";
+import { AI_PROVIDERS, isAiProviderId, type AiProviderId } from "@/lib/ai/shared";
 
 const askSchema = z.object({ question: z.string().min(3).max(2000) });
 
@@ -26,7 +36,37 @@ interface ConnectorSelection {
   model: string | null;
   temperature: number;
   maxTokens: number;
+  configJson: string | null;
 }
+
+interface KeyMaterial {
+  provider: AiProviderId;
+  apiKey: string;
+  /** Custom (OpenAI-compatible) endpoints only. */
+  baseUrl: string | null;
+}
+
+/**
+ * Decrypt the connector's stored key (BYOK row saved in Settings → AI provider).
+ * Returns null for connectors that carry no readable key material — those fall
+ * back to the Z.ai SDK path below (legacy/internal deployments).
+ */
+function readConnectorKey(row: ConnectorSelection): KeyMaterial | null {
+  if (!row.configJson) return null;
+  try {
+    const cfg = JSON.parse(row.configJson) as { keyEnc?: string; provider?: string; baseUrl?: string };
+    if (!cfg.keyEnc || !looksEncrypted(cfg.keyEnc)) return null;
+    const raw = isAiProviderId(cfg.provider ?? "") ? cfg.provider! : row.provider;
+    if (!isAiProviderId(raw)) return null;
+    const baseUrl = typeof cfg.baseUrl === "string" && cfg.baseUrl.trim() ? cfg.baseUrl.trim() : null;
+    return { provider: raw, apiKey: decryptSecret(cfg.keyEnc), baseUrl };
+  } catch {
+    return null;
+  }
+}
+
+const clip = (value: string, max: number): string =>
+  value.length > max ? `${value.slice(0, max)}…` : value;
 
 async function buildGovernedContext(): Promise<Record<string, unknown>> {
   const now = new Date();
@@ -69,8 +109,11 @@ async function buildGovernedContext(): Promise<Record<string, unknown>> {
       _count: { id: true },
     }),
     db.milestone.findMany({
-      where: { dueDate: { gte: now, lte: in30 }, status: { not: "COMPLETED" } },
-      orderBy: { dueDate: "asc" }, take: 8,
+      // Window is applied in JS, not SQL: imported due dates are ISO-8601 TEXT
+      // while Prisma binds epoch-ms INTEGER — SQLite can't compare across the
+      // two storages, so `gte/lte` would silently return 0 rows.
+      where: { dueDate: { not: null }, status: { not: "COMPLETED" } },
+      orderBy: { dueDate: "asc" }, take: 500,
       select: { name: true, dueDate: true, project: { select: { code: true } } },
     }),
   ]);
@@ -107,7 +150,10 @@ async function buildGovernedContext(): Promise<Record<string, unknown>> {
     newAlerts: alerts.map((a) => ({ severity: a.severity, title: a.title, project: a.project?.code ?? null, createdAt: a.createdAt })),
     capacityHotSpots,
     timesheetTotals: { windowDays: 28, totalHours: round2(timesheets._sum.totalHours ?? 0), billableHours: round2(timesheets._sum.billableHours ?? 0), timesheets: timesheets._count.id },
-    upcomingMilestones: milestones.map((m) => ({ name: m.name, dueDate: m.dueDate, project: m.project.code })),
+    upcomingMilestones: milestones
+      .filter((m) => m.dueDate !== null && m.dueDate.getTime() >= now.getTime() && m.dueDate.getTime() <= in30.getTime())
+      .slice(0, 8)
+      .map((m) => ({ name: m.name, dueDate: m.dueDate, project: m.project.code })),
   };
 }
 
@@ -119,41 +165,65 @@ export const POST = withApi(async (ctx) => {
   const connector: ConnectorSelection | null = await db.aIConnector.findFirst({
     where: { status: "ACTIVE" },
     orderBy: { createdAt: "asc" },
-    select: { id: true, name: true, provider: true, model: true, temperature: true, maxTokens: true },
+    select: { id: true, name: true, provider: true, model: true, temperature: true, maxTokens: true, configJson: true },
   });
-  if (!connector) throw new ApiError(502, "No active AI connector configured — contact the PMO administrator");
+  if (!connector) {
+    throw new ApiError(
+      502,
+      "No active AI connector configured — save a provider API key in Administration → Settings → AI provider " +
+        "(Google Gemini, OpenAI or Groq) to enable the AI PM Assistant."
+    );
+  }
 
   // 2) Governed data context (compact, row-capped)
   const context = await buildGovernedContext();
 
-  // 3) LLM call
+  // 3) LLM call — prefer the platform's saved key (BYOK) via the shared
+  //    provider adapters; fall back to the Z.ai SDK only for connectors that
+  //    carry no key material (legacy/internal rows).
   const started = Date.now();
+  const material = readConnectorKey(connector);
+  const systemPrompt =
+    "You are the PM Control Tower AI PM Assistant for an enterprise Project/Program/Portfolio Management platform. " +
+    "Answer executive-ready: concise, structured, action-oriented. Always cite real project codes from the context. " +
+    "Never invent data that is not present in the context; if the context lacks the answer, say what data would be needed. " +
+    "Use short paragraphs or bullet lists, flag RAG risks explicitly, and finish with a one-line recommendation when relevant.";
+  const userPrompt = `Context (live PM Control Tower data, capped extract):\n${JSON.stringify(context)}\n\nQuestion: ${body.question}`;
+
   let answer = "";
   let tokens = 0;
+  let providerUsed = connector.provider;
   try {
-    const { default: ZAI } = await import("z-ai-web-dev-sdk");
-    const zai = await ZAI.create();
-    const completion = (await zai.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are the PM Control Tower AI PM Assistant for an enterprise Project/Program/Portfolio Management platform. " +
-            "Answer executive-ready: concise, structured, action-oriented. Always cite real project codes from the context. " +
-            "Never invent data that is not present in the context; if the context lacks the answer, say what data would be needed. " +
-            "Use short paragraphs or bullet lists, flag RAG risks explicitly, and finish with a one-line recommendation when relevant.",
-        },
-        {
-          role: "user",
-          content: `Context (live PM Control Tower data, capped extract):\n${JSON.stringify(context)}\n\nQuestion: ${body.question}`,
-        },
-      ],
-      temperature: connector.temperature,
-      max_tokens: connector.maxTokens,
-    })) as unknown as ChatCompletionResponse;
+    if (material) {
+      const model = connector.model || AI_PROVIDERS[material.provider].defaultModel;
+      const out = await complete({
+        apiKey: material.apiKey,
+        provider: material.provider,
+        model,
+        prompt: userPrompt,
+        systemContext: systemPrompt,
+        temperature: connector.temperature,
+        maxOutputTokens: connector.maxTokens,
+        baseUrl: material.baseUrl ?? undefined,
+      });
+      answer = out.text;
+      tokens = out.tokens;
+      providerUsed = providerLabel(material.provider);
+    } else {
+      const { default: ZAI } = await import("z-ai-web-dev-sdk");
+      const zai = await ZAI.create();
+      const completion = (await zai.chat.completions.create({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: connector.temperature,
+        max_tokens: connector.maxTokens,
+      })) as unknown as ChatCompletionResponse;
 
-    answer = completion.choices?.[0]?.message?.content ?? "No answer";
-    tokens = completion.usage?.total_tokens ?? 0;
+      answer = completion.choices?.[0]?.message?.content ?? "No answer";
+      tokens = completion.usage?.total_tokens ?? 0;
+    }
     const durationMs = Date.now() - started;
 
     // 4) Persist successful execution + usage
@@ -174,10 +244,10 @@ export const POST = withApi(async (ctx) => {
 
     return ok({
       answer,
-      meta: { connector: connector.name, provider: connector.provider, tokens, durationMs, dataScopeUsed: DATA_SCOPE },
+      meta: { connector: connector.name, provider: providerUsed, tokens, durationMs, dataScopeUsed: DATA_SCOPE },
     });
   } catch (err) {
-    // 5) Honest failure: persist FAILED execution, surface 502
+    // 5) Honest failure: persist FAILED execution, surface an actionable 502
     const durationMs = Date.now() - started;
     const message = err instanceof Error ? err.message : String(err);
     await db.aIExecution.create({
@@ -194,7 +264,12 @@ export const POST = withApi(async (ctx) => {
       ipAddress: ctx.ip, userAgent: ctx.req.headers.get("user-agent"),
       severity: "WARNING",
     });
-    throw new ApiError(502, `AI assistant unavailable: ${message}`);
+    // Machine kind → honest, actionable copy (auth/rate-limit/timeout/network…),
+    // with the raw provider message kept alongside for the PMO administrator.
+    const kind: AiErrorKind =
+      err instanceof AiProviderError ? err.kind : toProviderError(err, material?.provider ?? "gemini").kind;
+    const hint = fallbackFor(kind, material ? providerLabel(material.provider) : undefined);
+    throw new ApiError(502, `AI assistant unavailable: ${hint} (${clip(message, 180)})`);
   }
 }, { permission: "ai.use", rateLimit: { limit: 10, windowMs: 60_000 } });
 

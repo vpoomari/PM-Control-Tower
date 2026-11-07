@@ -16,6 +16,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, Legend } from "recharts";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import { customFieldColumns } from "@/components/fields/custom-columns";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
 import { Plus, TrendingDown, TrendingUp } from "lucide-react";
 
 interface FinProject {
@@ -38,6 +41,7 @@ interface FinProjectDetail {
   variance: { actualVsBudgetPct: number; forecastVsBudgetPct: number; marginVsBudgetPct: number };
 }
 interface BudgetLine {
+  [key: string]: unknown;
   id: string; projectId: string; category: string; name: string;
   baselineAmount: number; currentAmount: number; actualAmount: number; forecastAmount: number;
   notes: string | null; project: { id: string; code: string; name: string };
@@ -97,6 +101,12 @@ export default function FinancialsView() {
   // Drawer data
   const detail = useApi<FinProjectDetail>(drawerId ? `/api/financials?projectId=${drawerId}` : null);
   const lines = useApi<{ budgetLines: BudgetLine[]; total: number }>(drawerId ? `/api/financials/budget-lines?projectId=${drawerId}` : null);
+  // --- Field Dictionary: assignments + bulk values for the loaded budget lines ---
+  const fields = useModuleFieldsHandle("budget_line", (lines.data?.budgetLines ?? []).map((l) => l.id));
+  const lineCols = useMemo(
+    () => customFieldColumns<BudgetLine>(fields.tableColumns, fields.values),
+    [fields.tableColumns, fields.values],
+  );
   const [addOpen, setAddOpen] = useState(false);
   const [savingLine, setSavingLine] = useState(false);
   const [lineForm, setLineForm] = useState({ category: "LABOR", name: "", baselineAmount: "0", currentAmount: "0", actualAmount: "0", forecastAmount: "0", notes: "" });
@@ -150,15 +160,18 @@ export default function FinancialsView() {
         subtitle="Budget vs actual vs forecast across the portfolio — drill into any project's budget lines."
         breadcrumb={["Home", "Control", "Financials"]}
         actions={
-          <Select value={portfolioId} onValueChange={setPortfolioId}>
-            <SelectTrigger className="bg-white h-9 w-full sm:w-72" aria-label="Portfolio selector">
-              <SelectValue placeholder="All projects" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All projects</SelectItem>
-              {(portfolios.data ?? []).map((p) => <SelectItem key={p.id} value={p.id}>{p.code} — {p.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <>
+            {fields.actions}
+            <Select value={portfolioId} onValueChange={setPortfolioId}>
+              <SelectTrigger className="bg-white h-9 w-full sm:w-72" aria-label="Portfolio selector">
+                <SelectValue placeholder="All projects" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All projects</SelectItem>
+                {(portfolios.data ?? []).map((p) => <SelectItem key={p.id} value={p.id}>{p.code} — {p.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </>
         }
       />
 
@@ -275,6 +288,11 @@ export default function FinancialsView() {
                               {["Line", "Baseline", "Current", "Actual", "Forecast"].map((h) => (
                                 <th key={h} className="text-left font-medium px-3 py-1.5 uppercase tracking-wide">{h}</th>
                               ))}
+                              {/* Field Dictionary: dynamic columns for any field flagged "in table" */}
+                              {lineCols.map((c) => (
+                                <th key={c.key} className="text-left font-medium px-3 py-1.5 uppercase tracking-wide">{c.header}</th>
+                              ))}
+                              <th className="px-3 py-1.5 w-10" />
                             </tr>
                           </thead>
                           <tbody>
@@ -285,6 +303,12 @@ export default function FinancialsView() {
                                 <td className="px-3 py-2 tabular-nums text-slate-700">{money(l.currentAmount)}</td>
                                 <td className="px-3 py-2 tabular-nums text-blue-600">{money(l.actualAmount)}</td>
                                 <td className="px-3 py-2 tabular-nums text-amber-600">{money(l.forecastAmount)}</td>
+                                {lineCols.map((c) => (
+                                  <td key={c.key} className="px-3 py-2">{c.render?.(l)}</td>
+                                ))}
+                                <td className="px-3 py-2">
+                                  <RecordFieldsButton moduleKey="budget_line" recordId={l.id} label={l.name ?? l.id} onSaved={fields.refetch} />
+                                </td>
                               </tr>
                             ))}
                             {cat && (
@@ -294,6 +318,8 @@ export default function FinancialsView() {
                                 <td className="px-3 py-2 tabular-nums font-semibold text-slate-700">{money(cat.currentAmount)}</td>
                                 <td className="px-3 py-2 tabular-nums font-semibold text-blue-700">{money(cat.actualAmount)}</td>
                                 <td className="px-3 py-2 tabular-nums font-semibold text-amber-700">{money(cat.forecastAmount)}</td>
+                                {lineCols.map((c) => <td key={c.key} className="px-3 py-2" />)}
+                                <td className="px-3 py-2" />
                               </tr>
                             )}
                           </tbody>

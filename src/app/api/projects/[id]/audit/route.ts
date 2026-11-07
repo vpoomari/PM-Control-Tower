@@ -4,7 +4,7 @@
 import { db } from "@/lib/db";
 import { withApi, ok, ApiError } from "@/lib/api";
 
-const PLAN_ENTITY_TYPES = ["Project", "Task", "WBSNode", "Dependency", "Milestone", "Baseline", "Requirement"];
+const PLAN_ENTITY_TYPES = ["Project", "Task", "WBSNode", "Dependency", "Milestone", "Baseline", "Requirement", "FLOW_WORKBOOK"];
 
 export const GET = withApi(async (ctx) => {
   const { id } = ctx.params;

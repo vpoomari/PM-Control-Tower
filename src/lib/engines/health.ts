@@ -109,6 +109,14 @@ export async function recalcProjectHealth(projectId: string, triggeredBy = "SYST
   });
   if (prevRag !== rag) {
     emitRealtime("project:health", { projectId, score, rag, previousRag: prevRag }, `project:${projectId}`);
+    // Cross-entity cascade: HEALTH_CHANGED automation rules react to RAG movement
+    // (dynamic import breaks the automations → health static cycle; depth-guarded).
+    void import("./automations")
+      .then((m) => m.fireAutomations("HEALTH_CHANGED", {
+        entityType: "Project", entityId: projectId, projectId,
+        previousRag: prevRag, rag, score, healthScore: score,
+      }))
+      .catch(() => undefined);
   }
   return { score, rag };
 }

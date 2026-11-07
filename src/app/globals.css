@@ -1,5 +1,11 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
 @import "tw-animate-css";
+
+/* Utilities are sourced exclusively from real source files. Automatic
+   detection previously scanned binary caches (e.g. stale .next-brand-* SST
+   files) and produced corrupted class selectors → CSS parse errors (HTTP 500). */
+@source "../../src/**/*.{ts,tsx,js,mjs,mdx,css}";
+
 
 @custom-variant dark (&:is(.dark *));
 
@@ -51,7 +57,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: oklch(0.57 0.13 226);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -62,15 +68,15 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --ring: oklch(0.57 0.13 226);
+  --chart-1: oklch(0.57 0.13 226);
+  --chart-2: oklch(0.58 0.16 293);
+  --chart-3: oklch(0.46 0.08 226);
+  --chart-4: oklch(0.75 0.14 167);
+  --chart-5: oklch(0.74 0.15 78);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary: oklch(0.57 0.13 226);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
@@ -118,5 +124,358 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* ============================ CONTROL TOWER UI THEMES ============================
+   Two user-selectable themes (html[data-theme], persisted in localStorage
+   "pmct_theme" and applied pre-paint by the inline script in layout.tsx):
+     - "classic" : the original base/simple enterprise look — the rules below do
+                   NOT apply, so it stays pixel-identical to the previous UI.
+     - "ct3d"    : Control Tower 3D — the brand palette (midnight navy, indigo,
+                   electric blue, neon cyan, vibrant purple, magenta, coral,
+                   orange, golden yellow, emerald, soft white, slate) expressed
+                   as floating glass cards, glossy gradient buttons, gradient
+                   rails, extruded KPI numbers and an aurora canvas.
+   These rules are intentionally unlayered so they win over Tailwind utilities —
+   but only when data-theme="ct3d" is set. Motion is gated behind
+   prefers-reduced-motion. ======================================================== */
+
+/* ---------- Wordmark gradient (part of the brand itself, both themes) ---------- */
+.ct-wordmark-grad {
+  background: linear-gradient(90deg, #00a6ef, #2864ff 32%, #843bff 64%, #f52aa8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html[data-theme="ct3d"] {
+  --ct-navy: #0b1026;
+  --ct-indigo: #17153b;
+  --ct-blue: #2864ff;
+  --ct-cyan: #00d9ff;
+  --ct-purple: #843bff;
+  --ct-magenta: #f52aa8;
+  --ct-coral: #ff5277;
+  --ct-orange: #ff8a24;
+  --ct-yellow: #ffd43b;
+  --ct-emerald: #29e68c;
+  --ct-white: #f7f9ff;
+  --ct-slate: #7c879d;
+  --ct-grad-brand: linear-gradient(120deg, #2864ff, #843bff 55%, #f52aa8);
+  --ct-grad-cool: linear-gradient(120deg, #00d9ff, #2864ff 55%, #843bff);
+  --ct-grad-warm: linear-gradient(120deg, #f52aa8, #ff8a24 55%, #ffd43b);
+  --ct-grad-fresh: linear-gradient(120deg, #29e68c, #00d9ff);
+  --ct-float: 0 1px 2px rgba(11, 16, 38, 0.05), 0 14px 32px -16px rgba(23, 21, 59, 0.22),
+    0 44px 84px -52px rgba(132, 59, 255, 0.3);
+  --ct-float-hover: 0 2px 4px rgba(11, 16, 38, 0.06), 0 22px 44px -18px rgba(23, 21, 59, 0.26),
+    0 60px 100px -52px rgba(132, 59, 255, 0.36);
+  color-scheme: light;
+}
+
+/* ---------- Aurora canvas ---------- */
+html[data-theme="ct3d"] body {
+  background: #eef1fa;
+}
+html[data-theme="ct3d"] .ct-app {
+  background:
+    radial-gradient(900px 420px at 88% -8%, rgba(132, 59, 255, 0.1), transparent 62%),
+    radial-gradient(760px 380px at 60% -12%, rgba(0, 217, 255, 0.1), transparent 62%),
+    radial-gradient(680px 420px at 102% 106%, rgba(245, 42, 168, 0.07), transparent 60%),
+    linear-gradient(180deg, #f2f5fd 0%, #eef1fa 42%, #edf0f9 100%);
+}
+html[data-theme="ct3d"] .ct-login {
+  background:
+    radial-gradient(720px 480px at 12% 108%, rgba(40, 100, 255, 0.09), transparent 62%),
+    radial-gradient(720px 420px at 92% -10%, rgba(132, 59, 255, 0.08), transparent 60%),
+    linear-gradient(180deg, #f4f6ff, #eef1fb);
+}
+
+/* ---------- Sidebar: navy → indigo, aurora glow, gradient active item ---------- */
+html[data-theme="ct3d"] .ct-sidebar {
+  position: relative;
+  background: linear-gradient(180deg, #0b1026 0%, #141238 44%, #17153b 100%);
+  border-right: 1px solid rgba(132, 59, 255, 0.16);
+  box-shadow: 4px 0 26px -14px rgba(11, 16, 38, 0.6);
+}
+html[data-theme="ct3d"] .ct-sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(220px 150px at 108% 2%, rgba(0, 217, 255, 0.16), transparent 70%),
+    radial-gradient(240px 180px at -12% 34%, rgba(132, 59, 255, 0.14), transparent 70%),
+    radial-gradient(220px 160px at 112% 78%, rgba(245, 42, 168, 0.1), transparent 70%);
+}
+html[data-theme="ct3d"] .ct-sidebar > * {
+  position: relative;
+}
+html[data-theme="ct3d"] a.ct-nav-link {
+  color: #9aa4c8;
+}
+html[data-theme="ct3d"] a.ct-nav-link svg {
+  color: var(--ct-accent, #843bff);
+  opacity: 0.92;
+  filter: drop-shadow(0 1px 2px rgba(11, 16, 38, 0.6));
+  transition: transform 0.16s ease;
+}
+html[data-theme="ct3d"] a.ct-nav-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+html[data-theme="ct3d"] a.ct-nav-link.ct-nav-active,
+html[data-theme="ct3d"] a.ct-nav-link.ct-nav-active:hover {
+  background: var(--ct-grad-brand);
+  color: #fff;
+  box-shadow: 0 6px 18px -6px rgba(132, 59, 255, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+html[data-theme="ct3d"] a.ct-nav-link.ct-nav-active svg {
+  color: #fff;
+  opacity: 1;
+  filter: drop-shadow(0 1px 2px rgba(11, 16, 38, 0.4));
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  html[data-theme="ct3d"] a.ct-nav-link:hover svg {
+    transform: translateY(-1px) scale(1.06);
+  }
+}
+
+/* ---------- Sidebar group buttons (top-level headers) + sub-tab bar ---------- */
+/* Default (Classic/Base/Simple): dark navy rail already provides contrast. */
+.ct-nav-group svg {
+  transition: transform 0.16s ease;
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .ct-nav-group:hover svg {
+    transform: translateY(-1px) scale(1.06);
+  }
+}
+html[data-theme="ct3d"] .ct-nav-group {
+  color: #9aa4c8;
+}
+html[data-theme="ct3d"] .ct-nav-group svg {
+  color: var(--ct-accent, #843bff);
+  opacity: 0.92;
+  filter: drop-shadow(0 1px 2px rgba(11, 16, 38, 0.6));
+}
+html[data-theme="ct3d"] .ct-nav-group:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+html[data-theme="ct3d"] .ct-nav-group.ct-nav-active,
+html[data-theme="ct3d"] .ct-nav-group.ct-nav-active:hover {
+  background: var(--ct-grad-brand);
+  color: #fff;
+  box-shadow: 0 6px 18px -6px rgba(132, 59, 255, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+html[data-theme="ct3d"] .ct-nav-group.ct-nav-active svg {
+  color: #fff;
+  opacity: 1;
+}
+/* Sub-tab bar: fixed high-contrast slate surface in every theme. */
+.ct-subtabs {
+  scrollbar-width: thin;
+}
+.ct-subtabs a[aria-current="page"] {
+  background: rgba(255, 255, 255, 0.08);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ct-nav-group svg {
+    transition: none;
+  }
+}
+
+/* ---------- Topbar: restrained glass ---------- */
+html[data-theme="ct3d"] .ct-topbar {
+  background: rgba(247, 249, 255, 0.72);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  border-bottom-color: rgba(23, 21, 59, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 10px 28px -22px rgba(23, 21, 59, 0.4);
+}
+
+/* ---------- Floating cards: gradient hairline border + ambient depth ---------- */
+html[data-theme="ct3d"] [data-slot="card"] {
+  border-radius: 16px;
+  border-color: transparent;
+  background-image: linear-gradient(#ffffff, #ffffff),
+    linear-gradient(135deg, rgba(0, 217, 255, 0.5), rgba(40, 100, 255, 0.26) 34%, rgba(132, 59, 255, 0.3) 66%, rgba(245, 42, 168, 0.42));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: var(--ct-float);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  html[data-theme="ct3d"] [data-slot="card"] {
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  html[data-theme="ct3d"] [data-slot="card"]:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--ct-float-hover);
+  }
+}
+
+/* ---------- KPI tiles: gradient rail + extruded numbers ---------- */
+html[data-theme="ct3d"] .ct-tile {
+  position: relative;
+}
+html[data-theme="ct3d"] [data-slot="card"].ct-tile::before {
+  content: "";
+  position: absolute;
+  inset: 1px 1px auto 1px;
+  height: 3px;
+  border-radius: 15px 15px 0 0;
+  background: var(--ct-grad-cool);
+  opacity: 0.9;
+  pointer-events: none;
+}
+html[data-theme="ct3d"] .ct-tile p.text-2xl {
+  text-shadow: 0 1px 0 #fff, 0 2px 0 rgba(23, 21, 59, 0.16);
+}
+
+/* ---------- Glossy gradient buttons ---------- */
+html[data-theme="ct3d"] [data-slot="button"] {
+  border-radius: 10px;
+}
+html[data-theme="ct3d"] [data-slot="button"].bg-primary {
+  background-image: var(--ct-grad-brand);
+  box-shadow: 0 4px 14px -4px rgba(40, 100, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+html[data-theme="ct3d"] [data-slot="button"].bg-primary:hover {
+  filter: brightness(1.07);
+  box-shadow: 0 7px 22px -6px rgba(132, 59, 255, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+html[data-theme="ct3d"] [data-slot="button"].bg-blue-600 {
+  background-image: var(--ct-grad-brand);
+  box-shadow: 0 4px 14px -4px rgba(40, 100, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+html[data-theme="ct3d"] [data-slot="button"].bg-destructive {
+  background-image: linear-gradient(120deg, #f52aa8, #ff5277);
+  box-shadow: 0 4px 14px -4px rgba(245, 42, 168, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+html[data-theme="ct3d"] [data-slot="button"].border {
+  background-image: linear-gradient(180deg, #ffffff, #f3f6ff);
+  border-color: #d9dff2;
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  html[data-theme="ct3d"] [data-slot="button"] {
+    transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease, background-color 0.14s ease;
+  }
+  html[data-theme="ct3d"] [data-slot="button"]:hover {
+    transform: translateY(-1px);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html[data-theme="ct3d"] [data-slot="button"]:active {
+    transform: translateY(1px);
+  }
+}
+
+/* ---------- Inputs ---------- */
+html[data-theme="ct3d"] [data-slot="input"] {
+  border-radius: 10px;
+  border-color: #d9dff2;
+  background: #fff;
+}
+html[data-theme="ct3d"] [data-slot="input"]:focus {
+  border-color: var(--ct-blue);
+}
+
+/* ---------- Badges ---------- */
+html[data-theme="ct3d"] [data-slot="badge"] {
+  border-radius: 999px;
+}
+html[data-theme="ct3d"] [data-slot="badge"].bg-primary {
+  background-image: var(--ct-grad-brand);
+}
+
+/* ---------- Tables: compact preserved, only the surface tints ---------- */
+html[data-theme="ct3d"] table thead tr {
+  background: linear-gradient(180deg, #f4f6ff, #eef1fc);
+}
+html[data-theme="ct3d"] table thead th {
+  color: #5b6480;
+}
+
+/* ---------- Progress bars: branded gradient fills by semantic tone ---------- */
+html[data-theme="ct3d"] .ct-progress {
+  background: linear-gradient(90deg, #e6eaf8, #eceffb);
+  box-shadow: inset 0 1px 2px rgba(23, 21, 59, 0.08);
+}
+html[data-theme="ct3d"] .ct-progress > div {
+  box-shadow: 0 1px 4px rgba(40, 100, 255, 0.4);
+}
+html[data-theme="ct3d"] .ct-progress > .bg-emerald-500 {
+  background-image: var(--ct-grad-fresh);
+  box-shadow: 0 1px 6px rgba(41, 230, 140, 0.5);
+}
+html[data-theme="ct3d"] .ct-progress > .bg-blue-500 {
+  background-image: linear-gradient(90deg, #2864ff, #843bff);
+}
+html[data-theme="ct3d"] .ct-progress > .bg-amber-500 {
+  background-image: linear-gradient(90deg, #ff8a24, #ffd43b);
+  box-shadow: 0 1px 6px rgba(255, 138, 36, 0.45);
+}
+
+/* ---------- Floating dialogs, menus, command palette: restrained glass ---------- */
+html[data-theme="ct3d"] [data-slot="dialog-content"],
+html[data-theme="ct3d"] [data-slot="alert-dialog-content"],
+html[data-theme="ct3d"] [data-slot="dropdown-menu-content"] {
+  border-radius: 16px;
+  border-color: rgba(23, 21, 59, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  backdrop-filter: blur(18px) saturate(1.35);
+  box-shadow: 0 8px 24px -8px rgba(23, 21, 59, 0.18), 0 48px 90px -40px rgba(11, 16, 38, 0.4);
+}
+
+/* ---------- Skeleton shimmer ---------- */
+html[data-theme="ct3d"] [data-slot="skeleton"] {
+  background: linear-gradient(90deg, #e9edfa 25%, #f6f8ff 50%, #e9edfa 75%);
+  background-size: 200% 100%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html[data-theme="ct3d"] [data-slot="skeleton"] {
+    animation: ct-shimmer 1.5s linear infinite;
+  }
+}
+@keyframes ct-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ---------- Selection + scrollbars ---------- */
+html[data-theme="ct3d"] ::selection {
+  background: rgba(132, 59, 255, 0.22);
+}
+html[data-theme="ct3d"] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+html[data-theme="ct3d"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+html[data-theme="ct3d"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #c9d2ee, #b9c2e8);
+  border-radius: 999px;
+  border: 2.5px solid transparent;
+  background-clip: padding-box;
+}
+html[data-theme="ct3d"] ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #a9b6e6, #9aa8df);
+  border: 2.5px solid transparent;
+  background-clip: padding-box;
+}
+
+/* ---------- Reduced motion: everything still works, nothing flies ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="ct3d"] *,
+  html[data-theme="ct3d"] *::before,
+  html[data-theme="ct3d"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -13,7 +13,10 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { num } from "@/lib/constants";
-import { Plus, Trash2 } from "lucide-react";
+import { useModuleFieldsHandle } from "@/components/fields/ModuleFields";
+import { customFieldColumns } from "@/components/fields/custom-columns";
+import RecordFieldsButton from "@/components/fields/RecordFieldsButton";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 
 type Requirement = {
   id: string;
@@ -39,18 +42,40 @@ interface ReqForm {
   ownerName: string; effortEstimate: string; acceptanceCriteria: string; source: string;
 }
 
-export default function RequirementsPanel({ projectId }: { projectId: string }) {
+export default function RequirementsPanel({ projectId, onDataChanged }: { projectId: string; onDataChanged?: () => Promise<void> | void }) {
   const reqs = useApi<RequirementsBundle>(`/api/projects/${projectId}/requirements`);
   useRealtimeRefetch(reqs.refetch, ["requirement:changed", "project:updated"]);
+
+  // --- Field Dictionary: assignments + bulk values for the visible requirements ---
+  const fields = useModuleFieldsHandle("requirement", (reqs.data?.items || []).map((r) => r.id));
+
+  const refreshAll = async () => {
+    await reqs.refetch();
+    await onDataChanged?.();
+  };
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null); // null = create mode
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<ReqForm>({ title: "", description: "", reqType: "FUNCTIONAL", priority: "MEDIUM", status: "DRAFT", ownerName: "", effortEstimate: "", acceptanceCriteria: "", source: "" });
 
-  const create = async () => {
+  const EMPTY_FORM: ReqForm = { title: "", description: "", reqType: "FUNCTIONAL", priority: "MEDIUM", status: "DRAFT", ownerName: "", effortEstimate: "", acceptanceCriteria: "", source: "" };
+
+  const openCreate = () => { setEditingId(null); setForm({ ...EMPTY_FORM }); setOpen(true); };
+  const openEdit = (r: Requirement) => {
+    setEditingId(r.id);
+    setForm({
+      title: r.title, description: r.description ?? "", reqType: r.reqType, priority: r.priority, status: r.status,
+      ownerName: r.ownerName ?? "", effortEstimate: r.effortEstimate == null ? "" : String(r.effortEstimate),
+      acceptanceCriteria: r.acceptanceCriteria ?? "", source: r.source ?? "",
+    });
+    setOpen(true);
+  };
+
+  const save = async () => {
     if (form.title.trim().length < 2) { toast.error("Title must be at least 2 characters"); return; }
     setSaving(true);
     try {
-      await api.post(`/api/projects/${projectId}/requirements`, {
+      const payload = {
         title: form.title.trim(),
         description: form.description.trim() || null,
         reqType: form.reqType,
@@ -60,13 +85,20 @@ export default function RequirementsPanel({ projectId }: { projectId: string }) 
         effortEstimate: form.effortEstimate === "" ? undefined : Number(form.effortEstimate),
         acceptanceCriteria: form.acceptanceCriteria.trim() || null,
         source: form.source.trim() || null,
-      });
-      toast.success("Requirement created");
+      };
+      if (editingId) {
+        await api.patch(`/api/projects/${projectId}/requirements/${editingId}`, payload);
+        toast.success("Requirement updated");
+      } else {
+        await api.post(`/api/projects/${projectId}/requirements`, payload);
+        toast.success("Requirement created");
+      }
       setOpen(false);
-      setForm({ title: "", description: "", reqType: "FUNCTIONAL", priority: "MEDIUM", status: "DRAFT", ownerName: "", effortEstimate: "", acceptanceCriteria: "", source: "" });
-      await reqs.refetch();
+      setEditingId(null);
+      setForm({ ...EMPTY_FORM });
+      await refreshAll();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to create requirement");
+      toast.error(e instanceof Error ? e.message : "Failed to save requirement");
     } finally {
       setSaving(false);
     }
@@ -76,10 +108,10 @@ export default function RequirementsPanel({ projectId }: { projectId: string }) 
     try {
       await api.patch(`/api/projects/${projectId}/requirements/${r.id}`, { status });
       toast.success(`${r.reqCode} → ${status.replace("_", " ").toLowerCase()}`);
-      await reqs.refetch();
+      await refreshAll();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Status update failed");
-      await reqs.refetch();
+      await refreshAll();
     }
   };
 
@@ -87,11 +119,13 @@ export default function RequirementsPanel({ projectId }: { projectId: string }) 
     try {
       await api.del(`/api/projects/${projectId}/requirements/${r.id}`);
       toast.success(`${r.reqCode} deleted`);
-      await reqs.refetch();
+      await refreshAll();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Delete failed");
     }
   };
+
+  const editingCode = editingId ? (reqs.data?.items || []).find((r) => r.id === editingId)?.reqCode ?? "" : "";
 
   const columns: Column<Requirement>[] = [
     { key: "reqCode", header: "Code", render: (r) => <span className="font-mono text-xs text-slate-500">{r.reqCode}</span> },
@@ -115,28 +149,43 @@ export default function RequirementsPanel({ projectId }: { projectId: string }) 
     ) },
     { key: "ownerName", header: "Owner", render: (r) => r.ownerName || "—" },
     { key: "effortEstimate", header: "Effort (h)", className: "text-right", render: (r) => <span className="tabular-nums">{num(r.effortEstimate, 0)}</span> },
+    // Field Dictionary: dynamic columns for any field flagged "in table"
+    ...customFieldColumns<Requirement>(fields.tableColumns, fields.values),
+    { key: "cf", header: "", className: "w-10", render: (r) => (
+      <RecordFieldsButton moduleKey="requirement" recordId={r.id} label={r.reqCode} onSaved={fields.refetch} />
+    ) },
     { key: "actions", header: "", className: "text-right", render: (r) => (
-      <ConfirmButton variant="ghost" title={`Delete ${r.reqCode}?`} description="This removes the requirement from the project scope record." confirmLabel="Delete" onConfirm={() => remove(r)}>
-        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Delete ${r.reqCode}`}>
-          <Trash2 className="h-3.5 w-3.5 text-red-500" />
+      <span className="inline-flex items-center gap-1" onDoubleClick={(e) => e.stopPropagation()}>
+        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit ${r.reqCode}`} title="Edit (or double-click the row)" onClick={() => openEdit(r)}>
+          <Pencil className="h-3.5 w-3.5 text-slate-500" />
         </Button>
-      </ConfirmButton>
+        <ConfirmButton variant="ghost" title={`Delete ${r.reqCode}?`} description="This removes the requirement from the project scope record." confirmLabel="Delete" onConfirm={() => remove(r)}>
+          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Delete ${r.reqCode}`}>
+            <Trash2 className="h-3.5 w-3.5 text-red-500" />
+          </Button>
+        </ConfirmButton>
+      </span>
     ) },
   ];
 
   return (
     <SectionCard
       title="Requirements"
-      description={`${reqs.data?.total ?? 0} requirements registered against project scope`}
-      actions={<Button size="sm" className="h-8" onClick={() => setOpen(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Add requirement</Button>}
+      description={`${reqs.data?.total ?? 0} requirements registered against project scope · double-click a row to edit`}
+      actions={(
+        <>
+          {fields.actions}
+          <Button size="sm" className="h-8" onClick={openCreate}><Plus className="h-3.5 w-3.5 mr-1" /> Add requirement</Button>
+        </>
+      )}
     >
       {reqs.loading ? <LoadingBlock label="Loading requirements…" />
         : reqs.error ? <ErrorBlock message={reqs.error} onRetry={reqs.refetch} />
-        : <DataTable columns={columns} rows={reqs.data?.items || []} keyField="id" emptyTitle="No requirements" emptyDescription="Capture scope as traceable requirements." maxHeight="480px" />}
+        : <DataTable columns={columns} rows={reqs.data?.items || []} keyField="id" onRowDoubleClick={(r) => openEdit(r)} emptyTitle="No requirements" emptyDescription="Capture scope as traceable requirements." maxHeight="480px" />}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditingId(null); }}>
         <DialogContent className="sm:max-w-xl">
-          <DialogHeader><DialogTitle>Add requirement</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? `Edit requirement${editingCode ? ` — ${editingCode}` : ""}` : "Add requirement"}</DialogTitle></DialogHeader>
           <div className="grid gap-3 py-1">
             <div className="grid gap-1.5">
               <Label htmlFor="req-title">Title</Label>
@@ -190,7 +239,7 @@ export default function RequirementsPanel({ projectId }: { projectId: string }) 
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={create} disabled={saving}>{saving ? "Creating…" : "Create requirement"}</Button>
+            <Button onClick={save} disabled={saving}>{saving ? "Saving…" : editingId ? "Save changes" : "Create requirement"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
